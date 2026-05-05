@@ -1,0 +1,24 @@
+# Еженедельный пинг Supabase для предотвращения паузы (Section 12)
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase health_ping table
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")
+          curl -s \
+            -X POST "$SUPABASE_URL/rest/v1/health_ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"pinged_at\": \"$TIMESTAMP\"}"
