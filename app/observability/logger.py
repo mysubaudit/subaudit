@@ -136,6 +136,7 @@ def log_error(
     exc: Exception | None = None,
     tags: dict[str, str] | None = None,
     extra: dict[str, Any] | None = None,
+    context: str | None = None,
 ) -> None:
     """
     Логирует ошибку уровня ERROR.
@@ -188,6 +189,7 @@ def log_warning(
     message: str,
     tags: dict[str, str] | None = None,
     extra: dict[str, Any] | None = None,
+    context: str | None = None,
 ) -> None:
     """
     Логирует предупреждение уровня WARNING.
