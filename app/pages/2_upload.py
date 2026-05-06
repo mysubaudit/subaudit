@@ -21,6 +21,8 @@ import io
 # app/utils/page_setup.py — аналогичный вызов есть в каждой странице приложения
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 
 # ---------------------------------------------------------------------------
