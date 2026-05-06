@@ -319,4 +319,11 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] { display: none !important; }
+[data-testid="stSidebarNavItems"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
+
 render_mapping_page()

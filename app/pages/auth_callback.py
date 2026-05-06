@@ -98,6 +98,18 @@ def main() -> None:
         layout="centered",
     )
 
+    st.set_page_config(
+        page_title="SubAudit — Verifying login...",
+        page_icon="🔐",
+        layout="centered",
+    )
+
+    st.markdown("""
+<style>
+[data-testid="stSidebarNav"] { display: none !important; }
+[data-testid="stSidebarNavItems"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
     # -------------------------------------------------------------------
     # Шаг 1: Получение токена из URL (query params)
     # Supabase передаёт токен через параметр "token" или "access_token"
