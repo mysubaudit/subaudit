@@ -28,6 +28,8 @@ from app.payments.lemon_squeezy import get_subscription_status
 from app.observability.logger import log_error, log_warning, log_info
 
 # Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -509,7 +511,7 @@ def _render_export(df: pd.DataFrame, plan: str, metrics: dict, currency: str) ->
                 )
                 log_info(f"PDF exported. plan={export_plan}")
             except Exception as exc:
-                log_error(exc, context="pdf_export")
+                log_error(str(exc), exc=exc, context="pdf_export")
                 st.error("PDF generation failed. Please try again.")
             finally:
                 st.session_state["pdf_generating"] = False
