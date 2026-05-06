@@ -260,16 +260,16 @@ def main() -> None:
     Section 16 Step 6 — страница аккаунта с кулдауном magic link.
     """
     st.set_page_config(
-        st.markdown("""
-        <style>
-        [data-testid="stSidebarNav"] { display: none !important; }
-        [data-testid="stSidebarNavItems"] { display: none !important; }
-        </style>
-        """, unsafe_allow_html=True)
         page_title="SubAudit — Account",
         page_icon="👤",
         layout="centered",
     )
+    st.markdown("""
+    <style>
+    [data-testid="stSidebarNav"] { display: none !important; }
+    [data-testid="stSidebarNavItems"] { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
     st.title("👤 Account")
 
