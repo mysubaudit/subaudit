@@ -494,13 +494,13 @@ def _render_export(df: pd.DataFrame, plan: str, metrics: dict, currency: str) ->
                 export_plan = _recheck_plan_for_export()
 
                 pdf_bytes: bytes = generate_pdf(
-                    df=df,
-                    metrics=metrics,
-                    forecast_dict=forecast_dict,
-                    simulation_dict=simulation_dict,
-                    plan=export_plan,
-                    currency=currency,
-                    company_name=company_name,
+                     metrics_dict=metrics,
+                     forecast_dict=forecast_dict,
+                     simulation_dict=simulation_dict,
+                     plan=export_plan,
+                     company_name=company_name,
+                     currency=currency,
+                     data_quality_flags=st.session_state.get("data_quality_flags", {}),
                 )
                 filename = f"{company_name.get('filename_safe_name', 'report')}_subaudit.pdf"
                 st.download_button(
