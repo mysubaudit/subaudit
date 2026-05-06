@@ -32,43 +32,43 @@ from app.core.mapper import (
 # Константы страницы
 # ---------------------------------------------------------------------------
 
-# Метки для отображения внутренних полей в UI
+# Метки для отображения внутренних полей в UI — на английском (пользователь видит)
 FIELD_LABELS: dict[str, str] = {
     "customer_id": "Customer ID",
     "date":        "Date / Period",
     "status":      "Status",
     "amount":      "Amount",
-    "currency":    "Currency (необязательно)",
+    "currency":    "Currency (optional)",
 }
 
-# Подсказки по каждому полю (tooltip в selectbox)
+# Подсказки по каждому полю (tooltip в selectbox) — на английском (пользователь видит при наведении)
 FIELD_HELP: dict[str, str] = {
     "customer_id": (
-        "Уникальный идентификатор клиента. "
-        "Используется для расчёта всех метрик удержания (Section 5)."
+        "Unique customer identifier. "
+        "Used to calculate all retention metrics (Section 5)."
     ),
     "date": (
-        "Дата или период выставления счёта. "
-        "Формат: YYYY-MM или YYYY-MM-DD. "
-        "Используется для определения last_month / prev_month (Section 5)."
+        "Billing date or period. "
+        "Accepted formats: YYYY-MM or YYYY-MM-DD. "
+        "Used to determine last_month / prev_month (Section 5)."
     ),
     "status": (
-        "Статус подписки. "
-        "Допустимые значения: active, churned, trial (Section 3)."
+        "Subscription status. "
+        "Accepted values: active, churned, trial (Section 3)."
     ),
     "amount": (
-        "Сумма платежа. "
-        "Нулевые суммы исключаются из MRR, отрицательные = возвраты (Section 3)."
+        "Payment amount. "
+        "Zero amounts are excluded from MRR; negative amounts are treated as refunds (Section 3)."
     ),
     "currency": (
-        "Код валюты (например, USD, EUR). "
-        "Если в файле несколько валют — обработка будет заблокирована (Section 3). "
-        "Поле необязательно, если валюта одна."
+        "Currency code (e.g. USD, EUR). "
+        "If your file contains multiple currencies, processing will be blocked (Section 3). "
+        "This field is optional if all rows share a single currency."
     ),
 }
 
-# Placeholder для «не выбрано» в selectbox
-NOT_SELECTED = "— не выбрано —"
+# Placeholder для «не выбрано» в selectbox — на английском (пользователь видит)
+NOT_SELECTED = "— not selected —"
 
 
 # ---------------------------------------------------------------------------
@@ -91,12 +91,13 @@ def _validate_mapping(mapping: dict[str, str | None]) -> list[str]:
     Проверяет, что все обязательные поля сопоставлены.
     Возвращает список ошибок (пустой список = всё ОК).
     Section 5: customer_id, date, status, amount — обязательны.
+    Тексты ошибок на английском — пользователь их видит.
     """
     errors: list[str] = []
     for field in REQUIRED_FIELDS:
         if not mapping.get(field):
             errors.append(
-                f"Поле **{FIELD_LABELS[field]}** обязательно — выберите колонку."
+                f"**{FIELD_LABELS[field]}** is required — please select a column."
             )
     return errors
 
@@ -105,13 +106,14 @@ def _check_duplicate_selections(mapping: dict[str, str | None]) -> list[str]:
     """
     Проверяет, что одна и та же колонка CSV не сопоставлена двум разным полям.
     Игнорирует None-значения.
+    Тексты ошибок на английском — пользователь их видит.
     """
     selected = [v for v in mapping.values() if v]
     duplicates = {v for v in selected if selected.count(v) > 1}
     if duplicates:
         return [
-            f"Колонка **{col}** выбрана для нескольких полей — "
-            "каждая колонка может использоваться только один раз."
+            f"Column **{col}** is mapped to more than one field — "
+            "each column can only be used once."
             for col in duplicates
         ]
     return []
@@ -134,8 +136,9 @@ def render_mapping_page() -> None:
     5. Сохраняем column_mapping в session_state и переходим к шагу 4.
     """
 
-    st.title("🗂 Сопоставление колонок")
-    st.caption("Шаг 2 из 4")
+    # Заголовок и подпись — на английском (пользователь видит)
+    st.title("🗂 Column Mapping")
+    st.caption("Step 2 of 4")
 
     # ------------------------------------------------------------------
     # Guard: df_raw должен существовать в session_state (Section 14).
@@ -143,10 +146,10 @@ def render_mapping_page() -> None:
     # ------------------------------------------------------------------
     if "df_raw" not in st.session_state or st.session_state["df_raw"] is None:
         st.error(
-            "Данные не загружены. Пожалуйста, сначала загрузите CSV-файл."
+            "No data loaded. Please upload a CSV file first."
         )
         st.button(
-            "← Перейти к загрузке",
+            "← Back to Upload",
             on_click=_go_back_to_upload,
             type="primary",
         )
@@ -155,14 +158,14 @@ def render_mapping_page() -> None:
     df_raw = st.session_state["df_raw"]
 
     # ------------------------------------------------------------------
-    # Превью загруженных данных
+    # Превью загруженных данных — заголовок expander на английском
     # ------------------------------------------------------------------
-    with st.expander("📋 Превью загруженного файла", expanded=False):
+    with st.expander("📋 Preview uploaded file", expanded=False):
         st.dataframe(df_raw.head(5), use_container_width=True)
         st.caption(
-            f"Всего строк: **{len(df_raw):,}** · "
-            f"Колонок: **{len(df_raw.columns)}** · "
-            f"Колонки: {', '.join(df_raw.columns.tolist())}"
+            f"Total rows: **{len(df_raw):,}** · "
+            f"Columns: **{len(df_raw.columns)}** · "
+            f"Column names: {', '.join(df_raw.columns.tolist())}"
         )
 
     st.divider()
@@ -185,12 +188,12 @@ def render_mapping_page() -> None:
     csv_columns = [NOT_SELECTED] + list(df_raw.columns)
 
     # ------------------------------------------------------------------
-    # Отображаем UI для каждого поля
+    # Отображаем UI для каждого поля — все тексты на английском
     # ------------------------------------------------------------------
-    st.subheader("Укажите, какие колонки вашего файла соответствуют полям SubAudit")
+    st.subheader("Match your file columns to SubAudit fields")
     st.info(
-        "Поля с 🔴 обязательны. Поля с 🟡 необязательны. "
-        "SubAudit предложил сопоставление автоматически — проверьте и скорректируйте при необходимости.",
+        "Fields marked 🔴 are required. Fields marked 🟡 are optional. "
+        "SubAudit has suggested a mapping automatically — please review and adjust if needed.",
         icon="ℹ️",
     )
 
@@ -222,7 +225,7 @@ def render_mapping_page() -> None:
         if default_value and default_value in csv_columns:
             default_index = csv_columns.index(default_value)
         else:
-            default_index = 0  # «— не выбрано —»
+            default_index = 0  # «— not selected —»
 
         with target_col:
             selected = st.selectbox(
@@ -239,17 +242,17 @@ def render_mapping_page() -> None:
     st.divider()
 
     # ------------------------------------------------------------------
-    # Информационная панель: сводка текущего выбора
+    # Информационная панель: сводка текущего выбора — заголовки на английском
     # ------------------------------------------------------------------
-    with st.expander("🔍 Сводка текущего сопоставления", expanded=False):
+    with st.expander("🔍 Current mapping summary", expanded=False):
         summary_rows = []
         for field in ALL_FIELDS:
             mapped_col = current_mapping.get(field)
             status_icon = "✅" if mapped_col else ("⚠️" if field in OPTIONAL_FIELDS else "❌")
             summary_rows.append({
-                "Поле SubAudit":   FIELD_LABELS[field],
-                "Колонка в CSV":   mapped_col or "не выбрано",
-                "Статус":          status_icon,
+                "SubAudit Field":  FIELD_LABELS[field],
+                "CSV Column":      mapped_col or "not selected",
+                "Status":          status_icon,
             })
         import pandas as pd
         st.dataframe(
@@ -259,10 +262,10 @@ def render_mapping_page() -> None:
         )
 
     # ------------------------------------------------------------------
-    # Кнопка подтверждения + валидация
+    # Кнопка подтверждения + валидация — текст на английском
     # ------------------------------------------------------------------
     confirm_clicked = st.button(
-        "Подтвердить сопоставление →",
+        "Confirm mapping →",
         type="primary",
         use_container_width=True,
     )
@@ -291,16 +294,15 @@ def render_mapping_page() -> None:
             if "_suggested_mapping" in st.session_state:
                 del st.session_state["_suggested_mapping"]
 
-            st.success(
-                "Сопоставление сохранено. Переходим к очистке данных..."
-            )
+            # Сообщение об успехе — на английском
+            st.success("Mapping saved. Proceeding to data cleaning...")
             _go_to_cleaning()
 
     # ------------------------------------------------------------------
-    # Кнопка «Назад» — вернуться к загрузке
+    # Кнопка «Назад» — на английском
     # ------------------------------------------------------------------
     st.button(
-        "← Загрузить другой файл",
+        "← Upload a different file",
         on_click=_go_back_to_upload,
         use_container_width=True,
     )
@@ -308,10 +310,11 @@ def render_mapping_page() -> None:
 
 # ---------------------------------------------------------------------------
 # Точка входа страницы Streamlit
+# page_title на английском — отображается во вкладке браузера (пользователь видит)
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="SubAudit — Сопоставление колонок",
+    page_title="SubAudit — Column Mapping",
     page_icon="🗂",
     layout="wide",
 )

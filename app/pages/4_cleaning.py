@@ -33,22 +33,23 @@ def _check_session_prerequisites() -> bool:
     Проверяет, что необходимые данные сессии присутствуют.
     Согласно Section 14: df_clean ещё не создан на этом этапе,
     поэтому проверяем наличие column_mapping (результат Step 2 / 3_mapping.py).
+    Все сообщения для пользователя — на английском.
     """
     if "column_mapping" not in st.session_state:
         st.error(
-            "⚠️ Маппинг колонок не найден. "
-            "Пожалуйста, вернитесь к шагу загрузки файла."
+            "⚠️ Column mapping not found. "
+            "Please go back to the upload step and start again."
         )
-        st.page_link("pages/2_upload.py", label="← Вернуться к загрузке")
+        st.page_link("pages/2_upload.py", label="← Back to Upload")
         return False
 
     # df_raw должен присутствовать — он ещё не удалён (удаляем ПОСЛЕ clean_data)
     if "df_raw" not in st.session_state:
         st.error(
-            "⚠️ Исходные данные не найдены в сессии. "
-            "Возможно, сессия истекла — загрузите файл заново."
+            "⚠️ Source data not found in session. "
+            "Your session may have expired — please upload your file again."
         )
-        st.page_link("pages/2_upload.py", label="← Вернуться к загрузке")
+        st.page_link("pages/2_upload.py", label="← Back to Upload")
         return False
 
     return True
@@ -96,7 +97,7 @@ def _run_cleaning_with_timeout(df_raw, column_mapping: dict) -> dict | None:
     # Проверяем результаты
     if timed_out_flag["value"]:
         log_warning(
-            "clean_data() превысила таймаут",
+            "clean_data() timed out",
             extra={"timeout_seconds": CLEANING_TIMEOUT_SECONDS},
         )
         return None
@@ -108,7 +109,7 @@ def _run_cleaning_with_timeout(df_raw, column_mapping: dict) -> dict | None:
         return result_container
 
     # Поток завершился, но результата нет — нештатная ситуация
-    log_warning("clean_data() завершилась без результата и без исключения")
+    log_warning("clean_data() finished without result and without exception")
     return None
 
 
@@ -116,38 +117,39 @@ def _display_cleaning_report(cleaning_report: dict) -> None:
     """
     Отображает отчёт об очистке данных.
     Поля отчёта определены в Section 3 (Data Limits & Validation).
+    Все тексты на английском — пользователь видит этот экран.
     """
-    st.subheader("📋 Отчёт об очистке данных")
+    st.subheader("📋 Data Cleaning Report")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         duplicates = cleaning_report.get("duplicates_removed", 0)
         st.metric(
-            label="Удалено дублей",
+            label="Duplicates removed",
             value=duplicates,
-            help="Удалены точные дубликаты строк (Section 3: Duplicate rows).",
+            help="Exact duplicate rows were removed (Section 3: Duplicate rows).",
         )
 
     with col2:
         zeros_excluded = cleaning_report.get("zeros_excluded", 0)
         st.metric(
-            label="Строк с amount = 0",
+            label="Rows with amount = 0",
             value=zeros_excluded,
             help=(
-                "Строки с amount == 0 исключены из MRR, "
-                "но сохранены в df_clean (Section 3: Amount == 0)."
+                "Rows with amount == 0 are excluded from MRR calculations "
+                "but kept in the cleaned dataset (Section 3: Amount == 0)."
             ),
         )
 
     with col3:
         negatives_excluded = cleaning_report.get("negatives_excluded", 0)
         st.metric(
-            label="Строк с amount < 0 (рефанды)",
+            label="Refund rows (amount < 0)",
             value=negatives_excluded,
             help=(
-                "Строки с amount < 0 учтены как revenue_churn (рефанды). "
-                "Исключены из MRR (Section 3: Amount < 0)."
+                "Rows with amount < 0 are counted as revenue churn (refunds) "
+                "and excluded from MRR (Section 3: Amount < 0)."
             ),
         )
 
@@ -155,7 +157,7 @@ def _display_cleaning_report(cleaning_report: dict) -> None:
     extra_keys = {k: v for k, v in cleaning_report.items()
                   if k not in ("duplicates_removed", "zeros_excluded", "negatives_excluded")}
     if extra_keys:
-        with st.expander("Подробности очистки"):
+        with st.expander("Cleaning details"):
             for key, value in extra_keys.items():
                 st.write(f"**{key}**: {value}")
 
@@ -167,10 +169,11 @@ def _display_cleaning_report(cleaning_report: dict) -> None:
 def main() -> None:
     """Точка входа страницы 4_cleaning.py."""
 
-    st.title("🧹 Очистка данных")
+    # Заголовок и описание — на английском (пользователь видит)
+    st.title("🧹 Data Cleaning")
     st.write(
-        "На этом шаге выполняется автоматическая очистка загруженного файла. "
-        "Результат будет использован для расчёта метрик."
+        "Your file is being automatically cleaned and prepared for analysis. "
+        "The result will be used to calculate all metrics."
     )
 
     # ------------------------------------------------------------------
@@ -183,17 +186,17 @@ def main() -> None:
     # Если df_clean уже вычислен — показываем результат без повторной очистки
     # ------------------------------------------------------------------
     if "df_clean" in st.session_state and "cleaning_report" in st.session_state:
-        st.success("✅ Данные уже очищены. Результат загружен из текущей сессии.")
+        st.success("✅ Data already cleaned. Loaded from your current session.")
         _display_cleaning_report(st.session_state["cleaning_report"])
 
-        # Информация о df_clean
+        # Информация о df_clean — на английском
         df_clean = st.session_state["df_clean"]
         st.info(
-            f"Очищенный датасет: **{len(df_clean):,}** строк, "
-            f"**{df_clean.shape[1]}** колонок."
+            f"Cleaned dataset: **{len(df_clean):,}** rows, "
+            f"**{df_clean.shape[1]}** columns."
         )
 
-        st.page_link("pages/5_dashboard.py", label="Перейти к дашборду →")
+        st.page_link("pages/5_dashboard.py", label="Go to Dashboard →")
         return
 
     # ------------------------------------------------------------------
@@ -202,38 +205,39 @@ def main() -> None:
     df_raw = st.session_state["df_raw"]
     column_mapping = st.session_state["column_mapping"]
 
-    # Информация о входных данных
+    # Информация о входных данных — на английском
     st.info(
-        f"Загружено строк: **{len(df_raw):,}**. "
-        f"Запускаем очистку (таймаут: {CLEANING_TIMEOUT_SECONDS} сек.)…"
+        f"Rows to process: **{len(df_raw):,}**. "
+        f"Starting cleaning (timeout: {CLEANING_TIMEOUT_SECONDS}s)…"
     )
 
-    with st.spinner("Очистка данных… пожалуйста, подождите."):
+    with st.spinner("Cleaning data… please wait."):
         start_time = time.monotonic()
         try:
             result = _run_cleaning_with_timeout(df_raw, column_mapping)
         except Exception as exc:
             # Необработанное исключение из clean_data()
-            log_error(f"Ошибка при очистке данных: {exc}")
+            log_error(f"Error during data cleaning: {exc}")
             st.error(
-                f"❌ Произошла ошибка при очистке данных: {exc}\n\n"
-                "Пожалуйста, проверьте корректность файла и попробуйте снова."
+                f"❌ An error occurred during data cleaning: {exc}\n\n"
+                "Please check your file and try again."
             )
-            st.page_link("pages/2_upload.py", label="← Загрузить другой файл")
+            st.page_link("pages/2_upload.py", label="← Upload a different file")
             st.stop()
 
         elapsed = time.monotonic() - start_time
 
     # ------------------------------------------------------------------
     # Обработка таймаута (Section 16 Step 3: threading.Timer timeout)
+    # Сообщение об ошибке — на английском
     # ------------------------------------------------------------------
     if result is None:
         st.error(
-            f"❌ Очистка данных заняла более {CLEANING_TIMEOUT_SECONDS} секунд и была прервана. "
-            "Возможно, файл слишком большой или содержит некорректные данные. "
-            "Попробуйте уменьшить объём данных или загрузить другой файл."
+            f"❌ Data cleaning took longer than {CLEANING_TIMEOUT_SECONDS} seconds and was stopped. "
+            "Your file may be too large or contain unexpected data patterns. "
+            "Try reducing the file size or uploading a different file."
         )
-        st.page_link("pages/2_upload.py", label="← Загрузить другой файл")
+        st.page_link("pages/2_upload.py", label="← Upload a different file")
         st.stop()
 
     # ------------------------------------------------------------------
@@ -249,31 +253,38 @@ def main() -> None:
     # Section 14: pop df_raw immediately after df_clean created
     st.session_state.pop("df_raw", None)
     log_info(
-        "Очистка завершена, df_raw удалён из session_state",
+        "Cleaning complete, df_raw removed from session_state",
         extra={"elapsed_seconds": round(elapsed, 2), "rows_clean": len(df_clean)},
     )
 
     # ------------------------------------------------------------------
-    # Отображение результатов
+    # Отображение результатов — все тексты на английском
     # ------------------------------------------------------------------
     st.success(
-        f"✅ Очистка завершена за {elapsed:.1f} сек. "
-        f"Итого строк в очищенном датасете: **{len(df_clean):,}**."
+        f"✅ Cleaning completed in {elapsed:.1f}s. "
+        f"Cleaned dataset: **{len(df_clean):,}** rows."
     )
 
     _display_cleaning_report(cleaning_report)
 
-    # Предпросмотр очищенных данных
-    with st.expander("🔍 Предпросмотр очищенных данных (первые 50 строк)"):
+    # Предпросмотр очищенных данных — заголовок на английском
+    with st.expander("🔍 Preview cleaned data (first 50 rows)"):
         st.dataframe(df_clean.head(50), use_container_width=True)
 
     st.divider()
 
-    # Кнопка перехода к дашборду
-    st.page_link("pages/5_dashboard.py", label="Перейти к дашборду →")
+    # Кнопка перехода к дашборду — на английском
+    st.page_link("pages/5_dashboard.py", label="Go to Dashboard →")
 
 
 # ---------------------------------------------------------------------------
 # Запуск страницы
+# page_title на английском — отображается во вкладке браузера (пользователь видит)
 # ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="SubAudit — Data Cleaning",
+    page_icon="🧹",
+    layout="wide",
+)
+
 main()

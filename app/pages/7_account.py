@@ -2,6 +2,9 @@
 7_account.py — Страница аккаунта пользователя SubAudit
 Реализовано строго по Master Specification Sheet v2.9.
 Используемые разделы: Section 4, 11, 12, 13, 14, 16 (Step 6).
+
+Комментарии — на русском (только для разработчика).
+Весь текст, который видит пользователь — на английском (англоязычная аудитория).
 """
 
 import time
@@ -13,21 +16,22 @@ from app.auth.supabase_auth import send_magic_link, get_user_plan, keep_alive_if
 from app.payments.lemon_squeezy import get_subscription_status
 from app.observability.logger import log_info, log_warning
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # Константа кулдауна для повторной отправки magic link
 # Section 11 / Section 12: COOLDOWN = 60 seconds
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 COOLDOWN = 60  # секунды — НЕ связано с логикой keepalive (Section 11)
 
 
 def _require_login() -> bool:
     """
     Проверяем, авторизован ли пользователь.
-    Если нет — показываем заглушку и возвращаем False.
+    Если нет — показываем заглушку и останавливаем выполнение.
     Section 14: user_email хранится в session_state.
+    Текст на английском — пользователь видит этот экран.
     """
     if not st.session_state.get("user_email"):
-        st.warning("Вы не авторизованы. Пожалуйста, войдите через магическую ссылку.")
+        st.warning("You are not signed in. Please log in using a magic link.")
         st.stop()
         return False
     return True
@@ -49,34 +53,36 @@ def _render_plan_badge(plan: str) -> None:
     """
     Отображаем бейдж текущего тарифного плана.
     Section 2: возможные значения — 'free', 'starter', 'pro'.
+    Тексты на английском — пользователь видит.
     """
     plan_labels = {
-        "free": "🆓 FREE",
+        "free":    "🆓 FREE",
         "starter": "⭐ STARTER — $19/mo",
-        "pro": "🚀 PRO — $49/mo",
+        "pro":     "🚀 PRO — $49/mo",
     }
-    label = plan_labels.get(plan, "❓ Неизвестный план")
-    st.markdown(f"### Текущий план: **{label}**")
+    label = plan_labels.get(plan, "❓ Unknown plan")
+    st.markdown(f"### Current plan: **{label}**")
 
 
 def _render_subscription_warning() -> None:
     """
     Показываем предупреждение, если проверка подписки завершилась с ошибкой.
     Section 13: subscription_warning, subscription_warning_reason.
+    Тексты на английском — пользователь видит этот экран.
     """
     if st.session_state.get("subscription_warning"):
         reason = st.session_state.get("subscription_warning_reason", "")
         if reason == "no_cache":
             st.warning(
-                "⚠️ Не удалось проверить статус подписки. "
-                "Используется план по умолчанию (FREE). "
-                "Если вы недавно оплатили — подождите до 60 секунд и обновите страницу."
+                "⚠️ Could not verify your subscription status. "
+                "Free plan is applied by default. "
+                "If you recently upgraded — please wait up to 60 seconds and refresh the page."
             )
         elif reason == "api_error":
             st.warning(
-                "⚠️ Ошибка API при проверке подписки. "
-                "Используется кешированный план. "
-                "Если проблема сохраняется — обратитесь в поддержку."
+                "⚠️ Subscription API error. "
+                "Your cached plan is being used. "
+                "If this issue persists, please contact support."
             )
 
 
@@ -84,14 +90,14 @@ def _refresh_subscription(user_email: str) -> str:
     """
     Перепроверяем план через Lemon Squeezy.
     Section 13: всегда показываем st.spinner, таймаут 5s, Checkpoint 1/3.
-    Section 2: план ДОЛЖЕН быть перепроверен перед PDF/Excel экспортом.
-    Здесь — обновление по запросу пользователя (Checkpoint на странице аккаунта).
+    Section 2: план ДОЛЖЕН быть перепроверён перед PDF/Excel экспортом.
+    Здесь — обновление по запросу пользователя.
     """
-    with st.spinner("Проверка подписки..."):
+    with st.spinner("Verifying subscription..."):
         plan = get_subscription_status(user_email)
-    # Обновляем план в session_state
+    # Обновляем план в session_state (Section 14)
     st.session_state["user_plan"] = plan
-    log_info(f"[7_account] Подписка обновлена для {user_email}: {plan}")
+    log_info(f"[7_account] Subscription refreshed for {user_email}: {plan}")
     return plan
 
 
@@ -101,43 +107,43 @@ def _render_magic_link_resend(user_email: str) -> None:
     Section 11 / Section 12: COOLDOWN = 60 секунд.
     Section 14: magic_link_last_sent — float Unix timestamp.
     Кулдаун НЕ связан с логикой keep_alive_if_needed (Section 11).
+    Тексты на английском — пользователь видит этот блок.
     """
-    st.subheader("Повторная отправка ссылки для входа")
+    st.subheader("Re-send login link")
 
     seconds_since = _get_seconds_since_last_sent()
-    remaining = None
 
     if seconds_since is not None and seconds_since < COOLDOWN:
-        # Кулдаун ещё не истёк
+        # Кулдаун ещё не истёк — показываем оставшееся время
         remaining = int(COOLDOWN - seconds_since)
         st.info(
-            f"⏳ Повторная отправка доступна через {remaining} сек. "
-            f"(кулдаун: {COOLDOWN} сек.)"
+            f"⏳ You can re-send in {remaining} second(s). "
+            f"(Cooldown: {COOLDOWN}s)"
         )
         # Кнопка заблокирована во время кулдауна
         st.button(
-            "Отправить магическую ссылку",
+            "Send magic link",
             disabled=True,
-            help=f"Подождите {remaining} секунд перед повторной отправкой.",
+            help=f"Please wait {remaining} second(s) before re-sending.",
         )
     else:
         # Кулдаун истёк или ссылка ещё не отправлялась
-        if st.button("Отправить магическую ссылку"):
+        if st.button("Send magic link"):
             success = send_magic_link(user_email)
             if success:
                 # Записываем Unix timestamp момента отправки (Section 14)
                 st.session_state["magic_link_last_sent"] = time.time()
                 st.success(
-                    f"✅ Магическая ссылка отправлена на {user_email}. "
-                    "Проверьте почту."
+                    f"✅ Magic link sent to {user_email}. "
+                    "Please check your inbox."
                 )
-                log_info(f"[7_account] Magic link отправлен: {user_email}")
+                log_info(f"[7_account] Magic link sent: {user_email}")
             else:
                 st.error(
-                    "❌ Не удалось отправить магическую ссылку. "
-                    "Попробуйте позже или обратитесь в поддержку."
+                    "❌ Failed to send magic link. "
+                    "Please try again later or contact support."
                 )
-                log_warning(f"[7_account] Не удалось отправить magic link: {user_email}")
+                log_warning(f"[7_account] Failed to send magic link: {user_email}")
 
 
 def _render_account_info(user_email: str, plan: str) -> None:
@@ -145,8 +151,9 @@ def _render_account_info(user_email: str, plan: str) -> None:
     Отображаем основную информацию об аккаунте.
     Section 14: user_email, user_plan из session_state.
     Section 2: описание возможностей по планам.
+    Все тексты на английском — пользователь видит этот экран.
     """
-    st.subheader("Информация об аккаунте")
+    st.subheader("Account information")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -157,34 +164,34 @@ def _render_account_info(user_email: str, plan: str) -> None:
     # Краткое описание возможностей текущего плана (Section 2)
     plan_features = {
         "free": [
-            "До 1 000 строк",
-            "1 CSV файл на сессию",
-            "Базовые метрики (Блоки 1–2)",
-            "PDF экспорт с водяным знаком",
-            "Без прогноза и симуляции",
+            "Up to 1,000 rows",
+            "1 CSV file per session",
+            "Basic metrics (Blocks 1–2)",
+            "PDF export with watermark",
+            "No forecast or simulation",
         ],
         "starter": [
-            "До 10 000 строк",
-            "1 CSV файл на сессию",
-            "Все 5 блоков метрик",
-            "PDF без водяного знака",
-            "Excel экспорт с формулами",
-            "Прогноз (реалистичный ≥3 мес., все сценарии ≥6 мес.)",
+            "Up to 10,000 rows",
+            "1 CSV file per session",
+            "All 5 metric blocks",
+            "PDF export — no watermark",
+            "Excel export with formulas",
+            "Forecast: realistic ≥ 3 mo; all 3 scenarios ≥ 6 mo",
         ],
         "pro": [
-            "До 50 000 строк",
-            "1 CSV файл на сессию",
-            "Все 5 блоков метрик",
-            "Брендированный PDF (с названием компании)",
-            "Excel экспорт с формулами",
-            "Прогноз (все сценарии ≥6 мес.)",
-            "Симуляция + PDF экспорт",
+            "Up to 50,000 rows",
+            "1 CSV file per session",
+            "All 5 metric blocks",
+            "PDF export — branded (company name)",
+            "Excel export with formulas",
+            "Forecast: all 3 scenarios ≥ 6 mo",
+            "Simulation dashboard + PDF export",
         ],
     }
 
     features = plan_features.get(plan, [])
     if features:
-        st.markdown("**Возможности вашего плана:**")
+        st.markdown("**Your plan includes:**")
         for feature in features:
             st.markdown(f"- {feature}")
 
@@ -193,15 +200,16 @@ def _render_upgrade_cta(plan: str) -> None:
     """
     CTA для апгрейда плана — показываем, если план не PRO.
     Section 4: 6_pricing.py — страница сравнения планов.
+    Тексты на английском — пользователь видит.
     """
     if plan != "pro":
         st.divider()
-        st.markdown("### 🚀 Хотите больше возможностей?")
+        st.markdown("### 🚀 Want more features?")
         st.markdown(
-            "Перейдите на **STARTER** или **PRO**, чтобы получить доступ "
-            "к расширенным метрикам, прогнозам и симуляции."
+            "Upgrade to **STARTER** or **PRO** to unlock advanced metrics, "
+            "forecasting, and simulation."
         )
-        if st.button("Сравнить планы и обновить"):
+        if st.button("Compare plans and upgrade"):
             # Переходим на страницу pricing (Section 4: 6_pricing.py)
             st.switch_page("pages/6_pricing.py")
 
@@ -210,9 +218,10 @@ def _render_logout() -> None:
     """
     Кнопка выхода из аккаунта.
     Очищаем пользовательские ключи session_state (Section 14).
+    Тексты на английском — пользователь видит.
     """
     st.divider()
-    if st.button("🚪 Выйти из аккаунта"):
+    if st.button("🚪 Sign out"):
         # Удаляем пользовательские данные из session_state (Section 14)
         keys_to_clear = [
             "user_email",
@@ -235,15 +244,15 @@ def _render_logout() -> None:
         for key in keys_to_clear:
             st.session_state.pop(key, None)
 
-        st.success("Вы вышли из аккаунта.")
-        log_info("[7_account] Пользователь вышел из аккаунта.")
+        st.success("You have been signed out.")
+        log_info("[7_account] User signed out.")
         # Перенаправляем на landing (Section 4: 1_landing.py)
         st.switch_page("pages/1_landing.py")
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 # Основная точка входа страницы
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     """
@@ -251,52 +260,52 @@ def main() -> None:
     Section 16 Step 6 — страница аккаунта с кулдауном magic link.
     """
     st.set_page_config(
-        page_title="SubAudit — Аккаунт",
+        page_title="SubAudit — Account",
         page_icon="👤",
         layout="centered",
     )
 
-    st.title("👤 Аккаунт")
+    st.title("👤 Account")
 
-    # ── Проверяем авторизацию (Section 14: user_email)
+    # Проверяем авторизацию (Section 14: user_email)
     _require_login()
 
     user_email: str = st.session_state["user_email"]
 
-    # ── Отображаем предупреждение подписки, если есть (Section 13)
+    # Отображаем предупреждение подписки, если есть (Section 13)
     _render_subscription_warning()
 
-    # ── Получаем актуальный план из session_state (Section 14)
-    # При необходимости перепроверяем через Lemon Squeezy (Section 13, Checkpoint)
+    # Получаем актуальный план из session_state (Section 14)
     plan: str = st.session_state.get("user_plan", "free")
 
-    # ── Информация об аккаунте и план (Section 2, Section 14)
+    # Информация об аккаунте и план (Section 2, Section 14)
     _render_account_info(user_email, plan)
 
     st.divider()
 
-    # ── Кнопка ручного обновления статуса подписки (Section 13)
-    if st.button("🔄 Обновить статус подписки"):
+    # Кнопка ручного обновления статуса подписки (Section 13)
+    if st.button("🔄 Refresh subscription status"):
         plan = _refresh_subscription(user_email)
         st.rerun()
 
-    # ── Постапгрейдное сообщение (Section 13: post-upgrade delay)
+    # Section 13: post-upgrade delay — показываем если предупреждение сработало
+    # сразу после апгрейда (пользователь мог только что оплатить)
     if st.session_state.get("subscription_warning") and plan == "free":
         st.info(
-            "💡 Если вы только что оплатили — платёжные системы могут обрабатывать "
-            "до 60 секунд. Пожалуйста, обновите страницу через момент."
+            "💡 If you just upgraded — payment processors may take up to 60 seconds. "
+            "Please refresh the page in a moment."
         )
 
     st.divider()
 
-    # ── Блок повторной отправки magic link с кулдауном (Section 11, Section 12)
+    # Блок повторной отправки magic link с кулдауном (Section 11, Section 12)
     # COOLDOWN = 60 секунд — строго по спецификации
     _render_magic_link_resend(user_email)
 
-    # ── CTA апгрейда, если план не PRO (Section 4: 6_pricing.py)
+    # CTA апгрейда, если план не PRO (Section 4: 6_pricing.py)
     _render_upgrade_cta(plan)
 
-    # ── Кнопка выхода (Section 14)
+    # Кнопка выхода (Section 14)
     _render_logout()
 
 

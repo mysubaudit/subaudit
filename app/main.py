@@ -31,6 +31,44 @@ MAX_AGE_SECONDS: int = 8 * 3600
 # test_idle_expires, подтверждающий наличие idle-guard.
 IDLE_TIMEOUT_SECONDS: int = 30 * 60
 
+
+# ---------------------------------------------------------------------------
+# CSS — скрываем автонавигацию Streamlit (глобально для всего приложения)
+# ---------------------------------------------------------------------------
+
+# ВАЖНО: Streamlit Community Cloud автоматически показывает ВСЕ файлы из
+# папки /pages/ в боковой панели. Это поведение нельзя отключить штатными
+# средствами. Решение — скрыть через CSS и заменить на контролируемую
+# навигацию через st.page_link() в _render_sidebar_nav().
+_HIDE_STREAMLIT_AUTONAV_CSS = """
+<style>
+    /* Скрываем автогенерируемый список страниц Streamlit */
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
+
+    /* Скрываем верхний декоративный блок над навигацией */
+    [data-testid="stSidebarNavItems"] {
+        display: none !important;
+    }
+
+    /* Убираем отступ, который Streamlit оставляет под скрытой навигацией */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 1rem;
+    }
+</style>
+"""
+
+
+def _inject_global_css() -> None:
+    """
+    Внедряет глобальные CSS-стили сразу после set_page_config.
+    Вызывается один раз в начале каждого рендера.
+    Скрывает автогенерируемую навигацию Streamlit (stSidebarNav).
+    """
+    st.markdown(_HIDE_STREAMLIT_AUTONAV_CSS, unsafe_allow_html=True)
+
+
 # ---------------------------------------------------------------------------
 # Инициализация Sentry (Section 4, Section 7 — observability/logger.py)
 # ---------------------------------------------------------------------------
@@ -186,7 +224,7 @@ def _enforce_session_guards() -> None:
 
     При срабатывании любого из условий:
       - сессия сбрасывается через _clear_session()
-      - пользователю показывается информационное сообщение
+      - пользователю показывается информационное сообщение (на английском — для пользователей)
       - st.stop() прерывает дальнейший рендер страницы
     """
     now: float = time.time()
@@ -195,9 +233,10 @@ def _enforce_session_guards() -> None:
     session_age: float = now - st.session_state.get("session_start", now)
     if session_age > MAX_AGE_SECONDS:
         _clear_session()
+        # Текст на английском — аудитория англоязычная (Section 1 проекта)
         st.info(
-            "Ваша сессия истекла (максимальное время — 8 часов). "
-            "Пожалуйста, загрузите файл заново."
+            "Your session has expired (maximum session length is 8 hours). "
+            "Please upload your file again to continue."
         )
         st.stop()
 
@@ -205,9 +244,10 @@ def _enforce_session_guards() -> None:
     idle_time: float = now - st.session_state.get("last_activity", now)
     if idle_time > IDLE_TIMEOUT_SECONDS:
         _clear_session()
+        # Текст на английском — аудитория англоязычная
         st.info(
-            "Сессия завершена из-за отсутствия активности (30 минут). "
-            "Пожалуйста, загрузите файл заново."
+            "Your session ended due to inactivity (30 minutes). "
+            "Please upload your file again to continue."
         )
         st.stop()
 
@@ -232,7 +272,7 @@ def record_activity() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Конфигурация страницы и навигации
+# Конфигурация страницы
 # ---------------------------------------------------------------------------
 
 def _configure_page() -> None:
@@ -241,67 +281,119 @@ def _configure_page() -> None:
 
     layout="wide" выбран для корректного отображения таблиц когорт и
     дашборда с метриками (Section 5–6, Section 7).
+
+    initial_sidebar_state:
+      - "collapsed" когда нет данных и пользователь не авторизован
+        (новый посетитель видит чистый лендинг)
+      - "expanded" когда пользователь работает с данными или авторизован
     """
+    has_data: bool = st.session_state.get("df_clean") is not None
+    user_logged_in: bool = bool(st.session_state.get("user_email"))
+
+    # Новый незарегистрированный пользователь — скрываем сайдбар полностью
+    sidebar_state = "expanded" if (has_data or user_logged_in) else "collapsed"
+
     st.set_page_config(
         page_title="SubAudit — Subscription Analytics",
         page_icon="📊",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state=sidebar_state,
     )
 
 
+# ---------------------------------------------------------------------------
+# Сайдбар — контролируемая навигация (заменяет автонавигацию Streamlit)
+# ---------------------------------------------------------------------------
+
 def _render_sidebar_nav() -> None:
     """
-    Отображает навигационное меню в боковой панели.
+    Отображает навигационную боковую панель с контролируемым набором ссылок.
 
-    Streamlit Community Cloud автоматически обнаруживает файлы в app/pages/
-    и строит навигацию, но мы явно дублируем ссылки для UX-ясности.
-    Порядок страниц соответствует Section 4 (Project File Structure).
+    ЛОГИКА ОТОБРАЖЕНИЯ СТРАНИЦ (что видит пользователь в зависимости от состояния):
 
-    Примечание: Streamlit сам управляет роутингом через pages/;
-    здесь мы только отображаем дополнительный контекст о плане.
+    Состояние 1 — Новый пользователь (не залогинен, нет данных):
+        → Сайдбар не показывается вообще.
+          Пользователь видит только лендинг. Навигация не нужна.
+
+    Состояние 2 — Пользователь загрузил файл (не залогинен, есть данные):
+        → Показываем: Upload (загрузить снова), Dashboard, Pricing, (Login через Account)
+          Пользователь может работать с данными на FREE плане.
+
+    Состояние 3 — Пользователь залогинен, нет данных:
+        → Показываем: Upload, Pricing, Account
+          Пользователь должен загрузить файл.
+
+    Состояние 4 — Пользователь залогинен И есть данные:
+        → Показываем все рабочие страницы: Upload, Dashboard, Pricing, Account
+
+    ВАЖНО: Mapping (3) и Cleaning (4) не включены в навигацию намеренно —
+    они вызываются автоматически через flow (Upload → Mapping → Cleaning → Dashboard).
+    Прямой переход на эти страницы без контекста приведёт к ошибке.
+
+    Все тексты — на английском (аудитория англоязычная).
+    Комментарии — на русском (только для разработчика).
     """
+    has_data: bool = st.session_state.get("df_clean") is not None
+    user_email: str | None = st.session_state.get("user_email")
+    user_logged_in: bool = bool(user_email)
+
+    # Состояние 1: новый пользователь — сайдбар не нужен
+    if not has_data and not user_logged_in:
+        return
+
     with st.sidebar:
-        st.markdown("## SubAudit")
+        # ── Логотип / заголовок ──────────────────────────────────────────
+        st.markdown("## 📊 SubAudit")
         st.markdown("---")
 
-        # Отображаем текущий план пользователя (Section 14: user_plan)
+        # ── Текущий план (Section 14: user_plan, Section 2: планы) ──────
         plan: str = st.session_state.get("user_plan", "free")
         plan_labels: dict[str, str] = {
             "free": "🆓 Free",
             "starter": "⭐ Starter",
             "pro": "🚀 Pro",
         }
-        st.markdown(f"**План:** {plan_labels.get(plan, plan.capitalize())}")
+        st.markdown(f"**Plan:** {plan_labels.get(plan, plan.capitalize())}")
 
-        # Предупреждение о проблемах с подпиской (Section 13 — Lemon Squeezy)
+        # ── Предупреждение подписки (Section 13) ────────────────────────
         if st.session_state.get("subscription_warning", False):
             reason: str = st.session_state.get(
                 "subscription_warning_reason", "api_error"
             )
             if reason == "no_cache":
-                st.warning(
-                    "⚠️ Не удалось проверить подписку. "
-                    "Применён план Free."
-                )
+                st.warning("⚠️ Could not verify subscription. Free plan applied.")
             else:
-                st.warning(
-                    "⚠️ Ошибка API подписки. "
-                    "Используются кешированные данные."
-                )
+                st.warning("⚠️ Subscription API error. Using cached plan.")
 
         st.markdown("---")
 
-        # Email пользователя, если авторизован (Section 14: user_email)
-        user_email: str | None = st.session_state.get("user_email")
+        # ── Навигационные ссылки (контролируемые, не авто-Streamlit) ────
+        # st.page_link доступен в Streamlit >= 1.31 (у нас 1.35.0 — Section 15)
+
+        # Upload — показываем всегда когда сайдбар виден
+        st.page_link("pages/2_upload.py", label="📤 Upload Data", icon=None)
+
+        # Dashboard — только если есть загруженные данные
+        if has_data:
+            st.page_link("pages/5_dashboard.py", label="📊 Dashboard", icon=None)
+
+        # Pricing — всегда (пользователь должен иметь доступ к апгрейду)
+        st.page_link("pages/6_pricing.py", label="💰 Pricing", icon=None)
+
+        # Account — только если залогинен (иначе смысла нет)
+        if user_logged_in:
+            st.page_link("pages/7_account.py", label="👤 Account", icon=None)
+
+        st.markdown("---")
+
+        # ── Email пользователя (маскируем — PII, Section 7) ─────────────
         if user_email:
-            # Показываем только первые символы для приватности (Section 7 — PII)
             masked: str = (
                 user_email[:3] + "***@" + user_email.split("@")[-1]
                 if "@" in user_email
                 else "***"
             )
-            st.caption(f"Пользователь: {masked}")
+            st.caption(f"Signed in as: {masked}")
 
         st.caption("SubAudit v2.9")
 
@@ -317,11 +409,12 @@ def main() -> None:
     Порядок вызовов строго соответствует Section 4 и Section 16, Step 1:
 
     1. Конфигурация страницы (должна быть ПЕРВЫМ вызовом Streamlit)
-    2. Инициализация Sentry
-    3. Инициализация session_state (при первом запуске)
-    4. Session guards (проверка истечения сессии)
-    5. Навигационная боковая панель
-    6. Контент главной страницы (редирект на landing или upload)
+    2. Внедрение глобального CSS (скрываем автонавигацию Streamlit)
+    3. Инициализация Sentry
+    4. Инициализация session_state (при первом запуске)
+    5. Session guards (проверка истечения сессии)
+    6. Навигационная боковая панель (только при наличии данных или авторизации)
+    7. Редирект на лендинг — main.py сам по себе не является страницей контента
 
     Маршрутизация по страницам выполняется самим Streamlit Community Cloud
     через механизм app/pages/*.py (Section 4).
@@ -329,43 +422,27 @@ def main() -> None:
     # 1. Конфигурация страницы — ОБЯЗАТЕЛЬНО первый вызов st.*
     _configure_page()
 
-    # 2. Инициализация Sentry (Section 4, Section 7)
+    # 2. Глобальный CSS — сразу после page_config, до любого контента
+    #    Скрывает автогенерируемую навигацию [data-testid="stSidebarNav"]
+    _inject_global_css()
+
+    # 3. Инициализация Sentry (Section 4, Section 7)
     _init_sentry()
 
-    # 3. Инициализация session_state (Section 14)
+    # 4. Инициализация session_state (Section 14)
     _init_session_state()
 
-    # 4. Session guards (Section 14: session_start MAX AGE + last_activity idle)
+    # 5. Session guards (Section 14: session_start MAX AGE + last_activity idle)
     _enforce_session_guards()
 
-    # 5. Боковая панель с навигацией и статусом плана
+    # 6. Боковая панель — только если есть данные или пользователь авторизован
     _render_sidebar_nav()
 
-    # 6. Контент главной страницы
-    #
-    # main.py сам по себе не является одной из нумерованных страниц (Section 4).
-    # При открытии корневого URL Streamlit отображает этот файл.
-    # Мы показываем краткое приветствие и направляем пользователя на лэндинг.
-    #
-    # Полноценный лэндинг реализован в app/pages/1_landing.py (Section 16, Step 1).
-    st.title("SubAudit")
-    st.markdown(
-        "**Subscription Analytics — превратите CSV-выгрузку в метрики SaaS.**"
-    )
-    st.markdown(
-        "Используйте меню слева для навигации или перейдите "
-        "на страницу **Upload** для загрузки файла."
-    )
-
-    # Информационный баннер о безопасности данных.
-    # Section 2 (ℹ): «Files are processed in-memory and NEVER stored or
-    # sent to third parties. This notice MUST appear on the Upload page —
-    # verbatim.»
-    # На главной странице дублируем мягко; verbatim-версия — в 2_upload.py.
-    st.info(
-        "🔒 Все файлы обрабатываются только в памяти браузера. "
-        "Ваши данные не сохраняются и не передаются третьим сторонам."
-    )
+    # 7. Редирект на лендинг
+    #    main.py — точка входа, не является полноценной страницей контента.
+    #    Streamlit Community Cloud при открытии корневого URL показывает main.py.
+    #    Полноценный лендинг — в app/pages/1_landing.py (Section 16, Step 1).
+    st.switch_page("pages/1_landing.py")
 
 
 # ---------------------------------------------------------------------------

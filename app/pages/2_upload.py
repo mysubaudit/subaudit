@@ -11,10 +11,15 @@ SubAudit — страница загрузки CSV-файла.
   - Section 16 : Development Order Step 1
 """
 
+import time
 import streamlit as st
 import pandas as pd
 from charset_normalizer import from_bytes  # Section 3: charset-normalizer (не chardet)
 import io
+
+# Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
+# app/utils/page_setup.py — аналогичный вызов есть в каждой странице приложения
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 
 # ---------------------------------------------------------------------------
 # Константы (Section 3)
@@ -73,16 +78,17 @@ def _read_csv(raw_bytes: bytes) -> tuple[pd.DataFrame | None, str]:
 
     if is_latin1:
         # Section 3: при latin-1 — предупреждение (не ошибка, продолжаем)
+        # Текст на английском — аудитория англоязычная
         st.warning(
-            "⚠️ Кодировка файла определена как latin-1 (последний вариант). "
-            "Некоторые символы могут отображаться некорректно."
+            "⚠️ File encoding detected as latin-1 (fallback). "
+            "Some characters may not display correctly."
         )
 
     try:
         df = pd.read_csv(io.BytesIO(raw_bytes), encoding=encoding, low_memory=False)
         return df, ""
     except Exception as exc:
-        return None, f"Не удалось прочитать CSV ({encoding}): {exc}"
+        return None, f"Could not read CSV ({encoding}): {exc}"
 
 
 def _validate_and_truncate(
@@ -97,11 +103,11 @@ def _validate_and_truncate(
     actual = len(df)
 
     if actual > limit:
-        # Section 3: сначала предупреждение, потом усечение
+        # Section 3: сначала предупреждение, потом усечение. Текст на английском.
         st.warning(
-            f"⚠️ Файл содержит {actual:,} строк, но план «{user_plan.upper()}» "
-            f"допускает не более {limit:,}. "
-            f"Будут обработаны первые {limit:,} строк."
+            f"⚠️ Your file contains {actual:,} rows, but the {user_plan.upper()} plan "
+            f"allows up to {limit:,} rows. "
+            f"Only the first {limit:,} rows will be processed."
         )
         df = df.iloc[:limit].copy()
 
@@ -122,9 +128,11 @@ def _check_currency(df: pd.DataFrame) -> str | None:
     unique_currencies = df[col].dropna().unique()
     if len(unique_currencies) > 1:
         currencies_list = ", ".join(str(c) for c in unique_currencies)
+        # Section 3: смешанные валюты — ошибка, блокировать обработку. Текст на английском.
         return (
-            f"❌ Файл содержит несколько валют: {currencies_list}. "
-            "Смешивание валют не допускается. Пожалуйста, загрузите файл с одной валютой."
+            f"❌ Your file contains multiple currencies: {currencies_list}. "
+            "Mixed currencies are not supported. "
+            "Please upload a file with a single currency."
         )
     return None
 
@@ -161,26 +169,33 @@ def show_lost_session_guidance() -> None:
     """
     Section 4: 2_upload.py — «lost-session guidance».
     Показывается, если пользователь попал на страницу без df_clean в session_state.
+    Текст на английском — аудитория англоязычная.
     """
     if "df_clean" not in st.session_state:
         st.info(
-            "ℹ️ Сессия не содержит загруженных данных. "
-            "Если вы обновили страницу или открыли новую вкладку — "
-            "пожалуйста, загрузите CSV-файл снова. "
-            "Данные хранятся только в памяти текущей сессии и не сохраняются на сервере."
+            "ℹ️ No data found in your current session. "
+            "If you refreshed the page or opened a new tab, "
+            "please upload your CSV file again. "
+            "Data is stored in-memory only and is not saved between sessions."
         )
 
 
 def main() -> None:
     """Точка входа страницы 2_upload.py."""
 
+    # page_title на английском — отображается во вкладке браузера (пользователь видит)
     st.set_page_config(
-        page_title="SubAudit — Загрузка данных",
+        page_title="SubAudit — Upload Data",
         page_icon="📂",
         layout="centered",
     )
 
-    st.title("📂 Загрузка данных")
+    # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
+    # (без этого Streamlit показывает все страницы из /pages/ всем пользователям)
+    inject_nav_css()
+    render_sidebar()
+
+    st.title("📂 Upload Your Data")
 
     # -----------------------------------------------------------------------
     # Section 3 / Section 4: обязательный notice о конфиденциальности —
@@ -202,25 +217,27 @@ def main() -> None:
     user_plan: str = st.session_state.get("user_plan", "free")
     limit_rows: int = MAX_ROWS[user_plan]
 
+    # Информационная строка о лимитах — текст на английском
     st.caption(
-        f"Ваш план: **{user_plan.upper()}** · "
-        f"Максимум строк: **{limit_rows:,}** · "
-        f"Максимальный размер файла: **15 МБ** · "
-        f"Формат: **.csv**"
+        f"Your plan: **{user_plan.upper()}** · "
+        f"Row limit: **{limit_rows:,}** · "
+        f"Max file size: **15 MB** · "
+        f"Format: **.csv only**"
     )
 
     # -----------------------------------------------------------------------
     # Виджет загрузки файла — 1 файл на сессию (Section 3)
+    # Все label/help тексты на английском (пользователь видит эти тексты)
     # -----------------------------------------------------------------------
     uploaded_file = st.file_uploader(
-        label="Выберите CSV-файл с данными подписок",
-        type=["csv"],          # Только .csv (Section 3)
-        accept_multiple_files=False,  # Section 3: 1 файл на сессию
-        help="Поддерживается только формат .csv. Максимальный размер — 15 МБ.",
+        label="Choose a CSV file with your subscription data",
+        type=["csv"],                   # Только .csv (Section 3)
+        accept_multiple_files=False,    # Section 3: 1 файл на сессию
+        help="Only .csv format is supported. Maximum file size is 15 MB.",
     )
 
     if uploaded_file is None:
-        # Файл ещё не загружен
+        # Файл ещё не загружен — ждём
         st.stop()
 
     # -----------------------------------------------------------------------
@@ -229,8 +246,8 @@ def main() -> None:
     file_name: str = uploaded_file.name
     if not file_name.lower().endswith(ALLOWED_EXTENSION):
         st.error(
-            f"❌ Неподдерживаемый формат файла: «{file_name}». "
-            "Допускается загрузка только файлов формата .csv."
+            f"❌ Unsupported file format: '{file_name}'. "
+            "Please upload a .csv file."
         )
         st.stop()
 
@@ -243,23 +260,23 @@ def main() -> None:
     if file_size_bytes > MAX_FILE_SIZE_BYTES:
         size_mb = file_size_bytes / (1024 * 1024)
         st.error(
-            f"❌ Размер файла ({size_mb:.1f} МБ) превышает лимит 15 МБ. "
-            "Пожалуйста, уменьшите файл и загрузите снова."
+            f"❌ File size ({size_mb:.1f} MB) exceeds the 15 MB limit. "
+            "Please reduce the file size and try again."
         )
         st.stop()
 
     # -----------------------------------------------------------------------
     # Чтение CSV с определением кодировки (Section 3)
     # -----------------------------------------------------------------------
-    with st.spinner("Читаем файл..."):
+    with st.spinner("Reading file..."):
         df_raw, read_error = _read_csv(raw_bytes)
 
     if df_raw is None:
-        st.error(f"❌ Ошибка чтения файла: {read_error}")
+        st.error(f"❌ Could not read the file: {read_error}")
         st.stop()
 
     if df_raw.empty:
-        st.error("❌ Загруженный файл не содержит строк данных.")
+        st.error("❌ The uploaded file contains no data rows.")
         st.stop()
 
     # -----------------------------------------------------------------------
@@ -308,43 +325,48 @@ def main() -> None:
     st.session_state["currency"] = currency_value
 
     # -----------------------------------------------------------------------
-    # Отчёт о базовой предобработке (informational)
+    # Отчёт о базовой предобработке — тексты на английском (пользователь видит)
     # Полный cleaning_report создаётся в core/cleaner.py (Step 3)
     # -----------------------------------------------------------------------
-    st.success(f"✅ Файл «{file_name}» успешно загружен.")
+    st.success(f"✅ File '{file_name}' uploaded successfully.")
+
+    # Явное действие пользователя — обновляем last_activity (Section 14)
+    record_activity()
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Строк загружено", f"{len(df_processed):,}")
-    col2.metric("Столбцов", f"{len(df_processed.columns):,}")
-    col3.metric("Удалено дубликатов", f"{duplicates_removed:,}")
+    col1.metric("Rows loaded", f"{len(df_processed):,}")
+    col2.metric("Columns", f"{len(df_processed.columns):,}")
+    col3.metric("Duplicates removed", f"{duplicates_removed:,}")
 
     if duplicates_removed > 0:
         st.info(
-            f"ℹ️ Удалено {duplicates_removed:,} точных дубликатов строк. "
-            "Подробности будут отражены в отчёте о чистке данных."
+            f"ℹ️ {duplicates_removed:,} exact duplicate row(s) were removed. "
+            "Details will appear in the data cleaning report."
         )
 
     if currency_value != "N/A":
-        st.caption(f"Валюта данных: **{currency_value}**")
+        st.caption(f"Detected currency: **{currency_value}**")
 
     # -----------------------------------------------------------------------
     # Предпросмотр данных
     # -----------------------------------------------------------------------
-    with st.expander("Предпросмотр данных (первые 10 строк)", expanded=False):
+    with st.expander("Preview data (first 10 rows)", expanded=False):
         st.dataframe(df_processed.head(10), use_container_width=True)
 
     # -----------------------------------------------------------------------
     # Навигация к следующему шагу (Section 16: Step 1 → Step 2 = 3_mapping.py)
+    # Текст кнопки на английском — пользователь видит
     # -----------------------------------------------------------------------
     st.divider()
-    st.markdown("**Следующий шаг:** сопоставление столбцов файла с полями SubAudit.")
+    st.markdown("**Next step:** map your file columns to SubAudit fields.")
 
-    if st.button("▶ Перейти к сопоставлению столбцов", type="primary", use_container_width=True):
+    if st.button("▶ Continue to Column Mapping", type="primary", use_container_width=True):
         st.switch_page("pages/3_mapping.py")
 
 
 # ---------------------------------------------------------------------------
 # Запуск
 # ---------------------------------------------------------------------------
-if __name__ == "__main__" or True:
-    main()
+# Streamlit запускает страницу как скрипт — main() вызывается напрямую.
+# "or True" убран намеренно: он вызывал main() при любом импорте модуля (баг).
+main()

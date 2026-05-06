@@ -2,6 +2,9 @@
 app/pages/6_pricing.py
 SubAudit — Страница сравнения тарифов и апгрейда.
 Строго по Master Specification Sheet v2.9, Section 2, 4, 16 (Step 6).
+
+Комментарии — на русском (только для разработчика).
+Весь текст, который видит пользователь — на английском (англоязычная аудитория).
 """
 
 import streamlit as st
@@ -40,27 +43,28 @@ def _render_subscription_warning() -> None:
     """
     Отображает предупреждение о проблеме с подпиской, если оно установлено.
     Section 13: subscription_warning + subscription_warning_reason.
+    Тексты на английском — пользователь видит этот экран.
     """
     if st.session_state.get("subscription_warning"):
         reason = st.session_state.get("subscription_warning_reason", "")
         if reason == "no_cache":
-            # Section 13: HTTP 401 или ошибка без кэша
+            # Section 13: HTTP 401 или ошибка без кэша → показываем стандартное сообщение
             st.warning(
-                "⚠️ Не удалось проверить статус подписки. "
-                "Отображается план по умолчанию. "
-                "Payment processors may take up to 60 seconds. "
-                "Please refresh in a moment."
+                "⚠️ Could not verify your subscription status. "
+                "Free plan is applied by default. "
+                "Payment processors may take up to 60 seconds — please refresh in a moment."
             )
         elif reason == "api_error":
-            # Section 13: ошибка API, используется кэш
+            # Section 13: ошибка API, используется кэшированный план
             st.warning(
-                "⚠️ Используются кэшированные данные подписки. "
-                "Статус может быть неактуальным."
+                "⚠️ Subscription API is temporarily unavailable. "
+                "Your cached plan is being used. Status may not be current."
             )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Данные тарифных планов (Section 2 — Pricing Plans)
+# Все строки для пользователя — на английском
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Структура тарифов строго по Section 2 таблице Feature / FREE / STARTER / PRO
@@ -69,16 +73,16 @@ PLANS: list[dict] = [
         "id": "free",
         "name": "FREE",
         "price": "$0",
-        "price_sub": "навсегда",
+        "price_sub": "forever",           # пользователь видит
         "login_required": False,
-        "max_rows": "1 000",
+        "max_rows": "1,000",
         "csv_per_session": "1",
-        "metric_blocks": "Базовые (блоки 1–2)",
-        "pdf_export": "С водяным знаком",
-        "excel_export": "Нет",
-        "forecast": "Нет",
-        "simulation": "Нет",
-        "cta_label": "Текущий план",
+        "metric_blocks": "Basic (Blocks 1–2)",
+        "pdf_export": "With watermark",
+        "excel_export": "No",
+        "forecast": "No",
+        "simulation": "No",
+        "cta_label": "Current plan",
         "cta_disabled": True,
         "highlight": False,
     },
@@ -86,16 +90,16 @@ PLANS: list[dict] = [
         "id": "starter",
         "name": "STARTER",
         "price": "$19",
-        "price_sub": "/ месяц",
+        "price_sub": "/ month",           # пользователь видит
         "login_required": True,
-        "max_rows": "10 000",
+        "max_rows": "10,000",
         "csv_per_session": "1",
-        "metric_blocks": "Все 5 блоков",
-        "pdf_export": "Без водяного знака",
-        "excel_export": "Да (с формулами)",
-        "forecast": "Realistic ≥ 3 мес.; все сценарии ≥ 6 мес.",
-        "simulation": "Нет",
-        "cta_label": "Выбрать Starter",
+        "metric_blocks": "All 5 blocks",
+        "pdf_export": "No watermark",
+        "excel_export": "Yes (with formulas)",
+        "forecast": "Realistic ≥ 3 mo; all 3 scenarios ≥ 6 mo",
+        "simulation": "No",
+        "cta_label": "Get Starter",
         "cta_disabled": False,
         "highlight": False,
     },
@@ -103,31 +107,31 @@ PLANS: list[dict] = [
         "id": "pro",
         "name": "PRO",
         "price": "$49",
-        "price_sub": "/ месяц",
+        "price_sub": "/ month",           # пользователь видит
         "login_required": True,
-        "max_rows": "50 000",
+        "max_rows": "50,000",
         "csv_per_session": "1",
-        "metric_blocks": "Все 5 блоков",
-        "pdf_export": "Брендированный (название компании)",
-        "excel_export": "Да (с формулами)",
-        "forecast": "Как Starter",
-        "simulation": "Дашборд + PDF экспорт",
-        "cta_label": "Выбрать Pro",
+        "metric_blocks": "All 5 blocks",
+        "pdf_export": "Branded (company name)",
+        "excel_export": "Yes (with formulas)",
+        "forecast": "Same as Starter",
+        "simulation": "Dashboard + PDF export",
+        "cta_label": "Get Pro",
         "cta_disabled": False,
         "highlight": True,  # PRO — выделенный план
     },
 ]
 
-# Список строк таблицы сравнения (Section 2)
+# Список строк таблицы сравнения — заголовки на английском (Section 2)
 FEATURE_ROWS: list[tuple[str, str]] = [
-    ("Авторизация", "login_required"),
-    ("Макс. строк", "max_rows"),
-    ("CSV файлов / сессию", "csv_per_session"),
-    ("Блоки метрик", "metric_blocks"),
-    ("PDF экспорт", "pdf_export"),
-    ("Excel экспорт", "excel_export"),
-    ("Прогноз", "forecast"),
-    ("Симуляция", "simulation"),
+    ("Login required",      "login_required"),
+    ("Max rows",            "max_rows"),
+    ("CSV files / session", "csv_per_session"),
+    ("Metric blocks",       "metric_blocks"),
+    ("PDF export",          "pdf_export"),
+    ("Excel export",        "excel_export"),
+    ("Forecast",            "forecast"),
+    ("Simulation",          "simulation"),
 ]
 
 
@@ -140,6 +144,7 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
     Рендерит карточку одного тарифа.
     CTA-кнопка ведёт на Lemon Squeezy (Section 13).
     Section 2: план FREE не требует авторизации, STARTER/PRO — требуют.
+    Все тексты для пользователя — на английском.
     """
     plan_id = plan["id"]
     is_current = (plan_id == current_plan)
@@ -158,16 +163,16 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
 
     st.divider()
 
-    # Список ключевых возможностей
+    # Список ключевых возможностей плана
     for label, key in FEATURE_ROWS:
         value = plan[key]
-        # Булевые значения превращаем в читаемые строки
+        # Булевые значения превращаем в читаемые строки на английском
         if isinstance(value, bool):
-            display = "✅ Да" if value else "❌ Нет"
+            display = "✅ Yes" if value else "❌ No"
         else:
-            # «Нет» стилизуем серым
-            if value == "Нет":
-                display = f"<span style='color:gray'>—</span>"
+            # «No» стилизуем серым
+            if value == "No":
+                display = "<span style='color:gray'>—</span>"
             else:
                 display = f"<strong>{value}</strong>"
         st.markdown(f"**{label}:** {display}", unsafe_allow_html=True)
@@ -176,35 +181,33 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
 
     # ── CTA-кнопка ──────────────────────────────────────────────────────────
     if is_current:
-        # Текущий план — просто информационная плашка
-        st.success("✅ Ваш текущий план")
+        # Текущий план пользователя — информационная плашка
+        st.success("✅ Your current plan")
 
     elif plan_id == "free":
         # FREE всегда доступен без действий
         if not is_logged_in:
-            st.info("Вы используете бесплатный план")
+            st.info("You are on the free plan")
         else:
-            # Авторизованный пользователь с платным планом не может «даунгрейдиться»
-            # здесь кнопка не нужна — downgrade описан как v1 limitation (Section 18)
-            st.info("Бесплатный план доступен без подписки")
+            # Авторизованный пользователь с платным планом — даунгрейд через v1 недоступен
+            # Section 18: Downgrade not detected mid-session — принятое ограничение v1
+            st.info("Free plan is available without a subscription")
 
     else:
         # STARTER и PRO — кнопка ведёт на Lemon Squeezy (Section 13)
-        # Lemon Squeezy не имеет webhook-интеграции (Section 13: «Webhooks — None»)
-        # После оплаты пользователь возвращается на сайт и план обновляется на
-        # Checkpoint 1 (login) или Checkpoint 2 (Dashboard load)
+        # Section 13: «Webhooks — None» — план обновляется на Checkpoint 1/2
         if not is_logged_in:
             # Section 2: STARTER/PRO требуют авторизации
             st.button(
-                f"🔐 Войдите, чтобы выбрать {plan['name']}",
+                f"🔐 Sign in to get {plan['name']}",
                 key=f"cta_{plan_id}_login",
                 use_container_width=True,
                 disabled=True,
             )
-            st.caption("Авторизуйтесь через страницу Аккаунт для оформления подписки.")
+            st.caption("Please sign in via the Account page to subscribe.")
         else:
-            # Авторизован — показываем кнопку перехода на Lemon Squeezy
-            # URL задаётся через st.secrets, здесь используется placeholder
+            # Авторизован — кнопка перехода на Lemon Squeezy checkout
+            # URL берётся из st.secrets (Section 19: ключи только в Secrets UI)
             lemon_url = st.secrets.get(
                 f"LEMON_SQUEEZY_CHECKOUT_{plan_id.upper()}",
                 f"https://subaudit.lemonsqueezy.com/checkout/{plan_id}",
@@ -215,7 +218,7 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
                 use_container_width=True,
             )
             st.caption(
-                "После оплаты вернитесь на сайт — план обновится автоматически."
+                "After payment, return to the site — your plan will update automatically."
             )
 
 
@@ -228,29 +231,30 @@ def render_pricing_page() -> None:
     Главная функция рендера страницы тарифов.
     Section 4: файл app/pages/6_pricing.py — план сравнения и CTA.
     Section 16 Step 6: эта страница входит в 6-й шаг разработки.
+    Все тексты для пользователя — на английском.
     """
 
-    st.title("💳 Тарифные планы SubAudit")
+    st.title("💳 SubAudit Plans")
     st.markdown(
-        "Выберите план, который подходит для вашего бизнеса. "
-        "Все данные обрабатываются **в памяти** и никогда не передаются третьим лицам."
+        "Choose the plan that fits your business. "
+        "All data is processed **in-memory** and never shared with third parties."
     )
 
-    # Получаем текущий план и статус авторизации
+    # Получаем текущий план и статус авторизации из session_state (Section 14)
     current_plan = _get_current_plan()
     is_logged_in = _is_logged_in()
 
     # Предупреждение о проблеме с подпиской (Section 13)
     _render_subscription_warning()
 
-    # Отображаем текущий план пользователя
+    # Информационная строка о текущем статусе пользователя
     if is_logged_in:
         plan_display = current_plan.upper()
-        st.info(f"🔑 Вы авторизованы. Текущий план: **{plan_display}**")
+        st.info(f"🔑 You are signed in. Current plan: **{plan_display}**")
     else:
         st.info(
-            "Вы не авторизованы. Используется бесплатный план. "
-            "Для доступа к STARTER и PRO войдите через страницу **Аккаунт**."
+            "You are not signed in. Free plan is active. "
+            "Sign in via the **Account** page to access STARTER and PRO."
         )
 
     st.markdown("---")
@@ -264,27 +268,26 @@ def render_pricing_page() -> None:
     st.markdown("---")
 
     # ── Детальная таблица сравнения (Section 2 — полная таблица) ────────────
-    st.subheader("📊 Полное сравнение возможностей")
+    st.subheader("📊 Full feature comparison")
 
-    # Строим таблицу через markdown для лучшей читаемости
-    # Заголовок
-    header = "| Возможность | FREE | STARTER ($19/мес) | PRO ($49/мес) |"
-    divider = "|---|:---:|:---:|:---:|"
+    # Строим markdown-таблицу — заголовки и данные строго по Section 2
+    header = "| Feature | FREE | STARTER ($19/mo) | PRO ($49/mo) |"
+    divider_row = "|---|:---:|:---:|:---:|"
 
-    rows = [header, divider]
+    rows = [header, divider_row]
 
     # Данные строк строго по Section 2
     table_data: list[tuple[str, str, str, str]] = [
-        ("Авторизация",              "Нет",       "Да",       "Да"),
-        ("Макс. строк",              "1 000",     "10 000",   "50 000"),
-        ("CSV файлов / сессию",      "1",         "1",        "1"),
-        ("Блоки метрик",             "Блоки 1–2", "Все 5",    "Все 5"),
-        ("PDF экспорт",              "С водяным знаком", "Без водяного знака", "Брендированный"),
-        ("Excel экспорт",            "—",         "✅ С формулами", "✅ С формулами"),
-        ("Прогноз",                  "—",
-         "Realistic ≥ 3 мес.; все сценарии ≥ 6 мес.",
-         "Как Starter"),
-        ("Симуляция",                "—",         "—",        "✅ Дашборд + PDF"),
+        ("Login required",      "No",           "Yes",              "Yes"),
+        ("Max rows",            "1,000",        "10,000",           "50,000"),
+        ("CSV files / session", "1",            "1",                "1"),
+        ("Metric blocks",       "Blocks 1–2",   "All 5",            "All 5"),
+        ("PDF export",          "With watermark", "No watermark",   "Branded"),
+        ("Excel export",        "—",            "✅ With formulas", "✅ With formulas"),
+        ("Forecast",            "—",
+         "Realistic ≥ 3 mo; all 3 scenarios ≥ 6 mo",
+         "Same as Starter"),
+        ("Simulation",          "—",            "—",                "✅ Dashboard + PDF"),
     ]
 
     for feat, free_val, starter_val, pro_val in table_data:
@@ -295,60 +298,59 @@ def render_pricing_page() -> None:
     st.markdown("---")
 
     # ── FAQ / известные ограничения (Section 18) ────────────────────────────
-    st.subheader("❓ Часто задаваемые вопросы")
+    # Все вопросы и ответы — на английском (пользователь видит)
+    st.subheader("❓ Frequently asked questions")
 
-    with st.expander("Что происходит при обновлении браузера?"):
+    with st.expander("What happens when I refresh the browser?"):
         # Section 18: No persistent sessions across browser refresh
         st.markdown(
-            "**Известное ограничение (v1):** Сессия не сохраняется между обновлениями браузера. "
-            "При обновлении страницы потребуется повторная авторизация. "
-            "Постоянные сессии запланированы в версии v3 (Supabase JWT cookies)."
+            "**Known limitation (v1):** Sessions are not preserved across browser refreshes. "
+            "Refreshing the page will require you to log in again. "
+            "Persistent sessions are planned for v3 (Supabase JWT cookies)."
         )
 
-    with st.expander("Как быстро применяется смена тарифа?"):
+    with st.expander("How quickly does a plan change take effect?"):
         # Section 13: post-upgrade delay / Checkpoint логика
         st.markdown(
-            "После оплаты через Lemon Squeezy вернитесь на сайт. "
-            "Платёжные системы могут обрабатывать транзакцию **до 60 секунд**. "
-            "Если план не обновился — подождите немного и обновите страницу. "
-            "Статус проверяется автоматически при входе и загрузке дашборда."
+            "After payment via Lemon Squeezy, return to the site. "
+            "Payment processors may take **up to 60 seconds** to process the transaction. "
+            "If your plan hasn't updated — wait a moment and refresh the page. "
+            "Your status is checked automatically on login and dashboard load."
         )
 
-    with st.expander("Сохраняются ли мои данные на серверах SubAudit?"):
+    with st.expander("Is my data stored on SubAudit servers?"):
         # Section 3 (ℹ notice) — VERBATIM из спецификации
         st.info(
             "Files are processed in-memory and NEVER stored or sent to third parties."
         )
 
-    with st.expander("Что такое 'даунгрейд' плана?"):
+    with st.expander("What is a plan downgrade?"):
         # Section 18: Downgrade not detected mid-session
         st.markdown(
-            "Понижение плана обнаруживается только при следующей загрузке дашборда "
-            "в **новой сессии**. В рамках текущей сессии доступ сохраняется. "
-            "Это принятое ограничение v1."
+            "A plan downgrade is only detected at the **next dashboard load in a new session**. "
+            "Access within the current session is preserved. "
+            "This is an accepted v1 limitation."
         )
 
-    with st.expander("Чем отличается Симуляция на PRO?"):
+    with st.expander("What does the PRO Simulation feature do?"):
         # Section 11: Simulation PRO only + ARPU homogeneity warning
         st.markdown(
-            "Симуляция позволяет моделировать влияние изменения оттока, "
-            "новых клиентов и повышения цены на MRR на 12 месяцев вперёд. "
-            "\n\n"
-            "⚠️ **Важно:** Результаты предполагают однородный ARPU. "
-            "При смешанных тарифных уровнях реальное влияние на выручку "
-            "может отличаться на 30–60%. Моделирование смешанных тарифов — "
-            "в дорожной карте v2."
+            "The Simulation lets you model the impact of churn reduction, "
+            "new customer growth, and price increases on your MRR over 12 months.\n\n"
+            "⚠️ **Note:** Results assume uniform ARPU across all subscribers. "
+            "With mixed pricing tiers, actual revenue impact may differ by 30–60%. "
+            "Mixed-tier modelling is on the v2 roadmap."
         )
 
     st.markdown("---")
 
-    # ── Навигационные ссылки ─────────────────────────────────────────────────
+    # ── Навигационные кнопки — тексты на английском ──────────────────────────
     col_left, col_right = st.columns(2)
     with col_left:
-        if st.button("← Вернуться к дашборду", use_container_width=True):
+        if st.button("← Back to Dashboard", use_container_width=True):
             st.switch_page("pages/5_dashboard.py")
     with col_right:
-        if st.button("Перейти к аккаунту →", use_container_width=True):
+        if st.button("Go to Account →", use_container_width=True):
             st.switch_page("pages/7_account.py")
 
 

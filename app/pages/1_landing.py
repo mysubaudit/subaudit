@@ -53,7 +53,11 @@ CUSTOM_CSS = """
 /* --- Скрываем стандартный Streamlit chrome --- */
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding: 0 !important; max-width: 100% !important; }
-[data-testid="stSidebar"] { display: none; }
+
+/* Скрываем весь сайдбар и кнопку-гамбургер ► (без этого кнопка видна даже при collapsed) */
+[data-testid="stSidebar"]         { display: none !important; }
+[data-testid="collapsedControl"]   { display: none !important; }
+[data-testid="stSidebarNav"]       { display: none !important; }
 
 /* --- Базовый фон --- */
 .stApp {
@@ -474,7 +478,7 @@ st.markdown("""
     </p>
     <div class="hero-cta-row">
         <a class="btn-primary" href="/upload" target="_self">
-            ↑ &nbsp;Analyse my data — it's free
+            → &nbsp;Analyse my data — it's free
         </a>
         <a class="btn-secondary" href="#pricing">
             View pricing
@@ -722,7 +726,7 @@ with col_c:
     """, unsafe_allow_html=True)
 
     # Streamlit-кнопка: навигация на страницу загрузки
-    if st.button("↑  Analyse my subscription data", key="cta_upload_bottom"):
+    if st.button("→  Analyse my subscription data  —  it's free", key="cta_upload_bottom"):
         # Section 4: 2_upload.py — страница загрузки CSV
         st.switch_page("pages/2_upload.py")
 
@@ -737,6 +741,8 @@ st.markdown("""
     <strong style="color: #8B949E;">SubAudit</strong>
     &nbsp;·&nbsp;
     Subscription analytics for SaaS founders
+    &nbsp;·&nbsp;
+    <a href="/upload" target="_self" style="color: #4F8EF7; text-decoration:none;">Get started</a>
     &nbsp;·&nbsp;
     <a href="/pricing" target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
     &nbsp;·&nbsp;

@@ -27,6 +27,9 @@ from app.reports.excel_builder import generate_excel
 from app.payments.lemon_squeezy import get_subscription_status
 from app.observability.logger import log_error, log_warning, log_info
 
+# Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ══════════════════════════════════════════════════════════════════════════════
@@ -354,17 +357,21 @@ def _render_simulation(df: pd.DataFrame, plan: str, metrics: dict, currency: str
     )
 
     # Параметры симуляции (Section 11 Input Parameters)
+    # Слайдеры показывают пользователю проценты (целые числа) для удобства.
+    # Значения делятся на 100 перед передачей в run_simulation(),
+    # чтобы соответствовать спецификации: churn_reduction 0.0–1.0, price_increase −0.5–5.0.
     col1, col2, col3 = st.columns(3)
     with col1:
-        churn_reduction = st.slider(
+        churn_reduction_pct = st.slider(
             "Churn Reduction",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.2,
-            step=0.05,
-            format="%.0f%%",
-            help="Fractional reduction in churn rate (0.20 = 20% less churn). Section 11.",
+            min_value=0,
+            max_value=100,
+            value=20,
+            step=5,
+            format="%d%%",
+            help="Fractional reduction in churn rate (20% = 0.20 less churn). Section 11.",
         )
+        churn_reduction = churn_reduction_pct / 100  # 0.0–1.0 согласно Section 11
     with col2:
         new_customers_month = st.number_input(
             "New Customers / Month",
@@ -375,15 +382,16 @@ def _render_simulation(df: pd.DataFrame, plan: str, metrics: dict, currency: str
             help="Additional new customers per month. Section 11.",
         )
     with col3:
-        price_increase = st.slider(
+        price_increase_pct = st.slider(
             "Price Increase",
-            min_value=-0.50,
-            max_value=5.0,
-            value=0.0,
-            step=0.05,
-            format="%.0f%%",
-            help="Fractional ARPU change (0.10 = 10% increase). Section 11.",
+            min_value=-50,
+            max_value=500,
+            value=0,
+            step=5,
+            format="%d%%",
+            help="Fractional ARPU change (10% = 0.10 increase). Section 11.",
         )
+        price_increase = price_increase_pct / 100  # −0.5–5.0 согласно Section 11
 
     # Запуск симуляции
     sim_result: dict | None = run_simulation(
@@ -633,7 +641,15 @@ def main() -> None:
       7. Симуляция — PRO only (Section 11)
       8. Экспорт (Section 2, 13)
     """
-    st.set_page_config(page_title="Dashboard — SubAudit", layout="wide")
+    st.set_page_config(
+        page_title="Dashboard — SubAudit",
+        page_icon="📊",  # отсутствовал — добавлен для консистентности со всеми страницами
+        layout="wide",
+    )
+
+    # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
+    inject_nav_css()
+    render_sidebar()
     st.title("📊 SubAudit Dashboard")
 
     # ── Проверка наличия данных в сессии ─────────────────────────────────────
@@ -719,5 +735,6 @@ def main() -> None:
 
 
 # ── Запуск страницы ───────────────────────────────────────────────────────────
-if __name__ == "__main__" or True:
-    main()
+# Streamlit запускает страницу как скрипт — main() вызывается напрямую.
+# "or True" убран намеренно: он вызывал main() при любом импорте модуля (баг).
+main()
