@@ -19,6 +19,7 @@ import pandas as pd
 from app.core.metrics import (
     _compute_time_context,
     calculate_arpu,
+    calculate_churn_rate,
     calculate_mrr,
 )
 
@@ -70,8 +71,6 @@ def run_simulation(
     # Churn rate берём из метрик. Если None (нет предыдущего месяца / gap),
     # используем fallback 5.0% — аналогично правилу из Section 10 (Churn fallback).
     # Section 6: calculate_churn_rate возвращает float or None.
-    from app.core.metrics import calculate_churn_rate  # noqa: PLC0415
-
     raw_churn = calculate_churn_rate(df)
     # Fallback: churn_rate is None → используем 5.0% (Section 10, Churn fallback)
     base_churn_rate: float = raw_churn if raw_churn is not None else 5.0

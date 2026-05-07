@@ -61,11 +61,10 @@ def _recheck_plan() -> str:
     """
     Ре-верификация плана у Lemon Squeezy — Section 13, Checkpoint 2.
     Вызывается при загрузке дашборда.
-    Всегда показывает st.spinner (Section 13: «always st.spinner — never silent»).
+    st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
     user_email: str | None = st.session_state.get("user_email")
-    with st.spinner("Verifying subscription..."):
-        plan = get_subscription_status(user_email)
+    plan = get_subscription_status(user_email)
     st.session_state["user_plan"] = plan
     return plan
 
@@ -74,10 +73,10 @@ def _recheck_plan_for_export() -> str:
     """
     Ре-верификация плана перед любым экспортом — Section 13, Checkpoint 3.
     Section 2: «Plan MUST be re-verified from Lemon Squeezy BEFORE generating any PDF or Excel».
+    st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
     user_email: str | None = st.session_state.get("user_email")
-    with st.spinner("Verifying subscription..."):
-        plan = get_subscription_status(user_email)
+    plan = get_subscription_status(user_email)
     st.session_state["user_plan"] = plan
     return plan
 
@@ -265,8 +264,9 @@ def _render_forecast(df: pd.DataFrame, plan: str, metrics: dict, currency: str) 
         return
 
     data_months_used: int = forecast_result.get("data_months_used", 0)
-    scenarios: dict = forecast_result.get("scenarios", {})
-    months_labels: list = forecast_result.get("months_labels", [])
+    # generate_forecast() возвращает ключи: realistic, pessimistic, optimistic,
+    # future_index — не "scenarios"/"months_labels" (Section 10, forecast.py)
+    future_index: list = forecast_result.get("future_index", [])
 
     # Сохраняем forecast_dict в session_state (Section 14)
     # Export gate: None когда data_months_used < 6 (Section 10)
@@ -284,11 +284,12 @@ def _render_forecast(df: pd.DataFrame, plan: str, metrics: dict, currency: str) 
     fig = go.Figure()
 
     # Realistic — всегда показывается (Section 10)
-    if "realistic" in scenarios:
+    realistic = forecast_result.get("realistic")
+    if realistic:
         fig.add_trace(
             go.Scatter(
-                x=months_labels,
-                y=scenarios["realistic"],
+                x=future_index,
+                y=realistic,
                 mode="lines+markers",
                 name="Realistic",
                 line=dict(color="#2563EB", width=2),
@@ -297,21 +298,23 @@ def _render_forecast(df: pd.DataFrame, plan: str, metrics: dict, currency: str) 
 
     # Pessimistic и Optimistic — только при ≥ 6 месяцах (Section 10)
     if data_months_used >= 6:
-        if "pessimistic" in scenarios:
+        pessimistic = forecast_result.get("pessimistic")
+        if pessimistic:
             fig.add_trace(
                 go.Scatter(
-                    x=months_labels,
-                    y=scenarios["pessimistic"],
+                    x=future_index,
+                    y=pessimistic,
                     mode="lines",
                     name="Pessimistic",
                     line=dict(color="#DC2626", width=1.5, dash="dash"),
                 )
             )
-        if "optimistic" in scenarios:
+        optimistic = forecast_result.get("optimistic")
+        if optimistic:
             fig.add_trace(
                 go.Scatter(
-                    x=months_labels,
-                    y=scenarios["optimistic"],
+                    x=future_index,
+                    y=optimistic,
                     mode="lines",
                     name="Optimistic",
                     line=dict(color="#16A34A", width=1.5, dash="dash"),
@@ -415,15 +418,17 @@ def _render_simulation(df: pd.DataFrame, plan: str, metrics: dict, currency: str
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
+        # run_simulation() возвращает "final_mrr", не "projected_mrr_12" (simulation.py)
         st.metric(
             "Projected MRR (12mo)",
-            _fmt_currency(sim_result.get("projected_mrr_12"), currency),
+            _fmt_currency(sim_result.get("final_mrr"), currency),
             delta=f"{mrr_change_pct:.1f}%" if mrr_change_pct is not None else "N/A",
         )
     with col_b:
+        # run_simulation() не возвращает количество подписчиков — показываем new_arpu
         st.metric(
-            "Projected Subscribers (12mo)",
-            _fmt_int(sim_result.get("projected_subscribers_12")),
+            "New ARPU",
+            _fmt_currency(sim_result.get("new_arpu"), currency),
         )
     with col_c:
         st.metric(
@@ -671,6 +676,9 @@ def main() -> None:
 
     df: pd.DataFrame = st.session_state["df_clean"]
     currency: str = st.session_state.get("currency", "USD")
+
+    # Обновляем last_activity — загрузка дашборда является явным действием (Section 14)
+    record_activity()
 
     # ── Checkpoint 2 — ре-верификация плана при загрузке дашборда ────────────
     # Section 13: «On Dashboard load (5_dashboard.py)»

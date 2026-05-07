@@ -191,6 +191,22 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
         # Текущий план пользователя — информационная плашка
         st.success("✅ Your current plan")
 
+        # Кнопка управления подпиской — только для платных планов
+        # TODO: заменить "#" на реальный Customer Portal URL после одобрения Lemon Squeezy
+        if plan_id in ("starter", "pro"):
+            CUSTOMER_PORTAL_URL = "#"  # заглушка — заменить после получения URL
+            if CUSTOMER_PORTAL_URL == "#":
+                st.caption(
+                    "To cancel or change your plan — email "
+                    "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)"
+                )
+            else:
+                st.link_button(
+                    "⚙️ Manage Subscription",
+                    url=CUSTOMER_PORTAL_URL,
+                    use_container_width=True,
+                )
+
     elif plan_id == "free":
         # FREE всегда доступен без действий
         if not is_logged_in:
@@ -359,6 +375,16 @@ def render_pricing_page() -> None:
     with col_right:
         if st.button("Go to Account →", use_container_width=True):
             st.switch_page("pages/7_account.py")
+
+    # ── Контакт / обратная связь ─────────────────────────────────────────────
+    # Короткая строка для вопросов — видна всем пользователям на странице тарифов
+    st.markdown(
+        "<div style='text-align:center; color:gray; margin-top:1rem;'>"
+        "Questions about plans? Write to us: "
+        "<a href='mailto:biz.sardorbek@gmail.com'>biz.sardorbek@gmail.com</a>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

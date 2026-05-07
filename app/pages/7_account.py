@@ -93,8 +93,8 @@ def _refresh_subscription(user_email: str) -> str:
     Section 2: план ДОЛЖЕН быть перепроверён перед PDF/Excel экспортом.
     Здесь — обновление по запросу пользователя.
     """
-    with st.spinner("Verifying subscription..."):
-        plan = get_subscription_status(user_email)
+    # Section 13: st.spinner уже внутри get_subscription_status() — двойная обёртка убрана
+    plan = get_subscription_status(user_email)
     # Обновляем план в session_state (Section 14)
     st.session_state["user_plan"] = plan
     log_info(f"[7_account] Subscription refreshed for {user_email}: {plan}")
@@ -196,6 +196,88 @@ def _render_account_info(user_email: str, plan: str) -> None:
             st.markdown(f"- {feature}")
 
 
+def _render_manage_subscription(plan: str) -> None:
+    """
+    Кнопка перехода в Lemon Squeezy Customer Portal для управления подпиской.
+    Показывается только платным пользователям (starter / pro).
+    TODO: заменить CUSTOMER_PORTAL_URL на реальный URL после одобрения Lemon Squeezy.
+    Текст на английском — пользователь видит этот блок.
+    """
+    if plan not in ("starter", "pro"):
+        return
+
+    # TODO: после одобрения Lemon Squeezy вставить реальный Customer Portal URL сюда
+    CUSTOMER_PORTAL_URL = "#"  # заглушка — заменить на реальный URL
+
+    st.divider()
+    st.markdown("### ⚙️ Manage Subscription")
+    st.markdown(
+        "You can cancel, pause, or change your plan directly "
+        "in the billing portal."
+    )
+
+    if CUSTOMER_PORTAL_URL == "#":
+        # Заглушка — портал ещё не настроен
+        st.info(
+            "🔧 Subscription management portal is coming soon. "
+            "To make changes, email us at "
+            "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)."
+        )
+    else:
+        # Реальная кнопка — откроется после получения URL от Lemon Squeezy
+        st.link_button(
+            "Open Billing Portal",
+            url=CUSTOMER_PORTAL_URL,
+            type="primary",
+        )
+
+
+def _render_feedback_section() -> None:
+    """
+    Секция обратной связи — оценка, сообщение, ссылка на email.
+    Используем st.feedback() (доступен в Streamlit >= 1.35.0 — Section 15).
+    Данные НЕ отправляются автоматически — пользователь кликает mailto ссылку.
+    Текст на английском — пользователь видит этот блок.
+    """
+    st.divider()
+    st.markdown("### 💬 Share Your Feedback")
+    st.markdown(
+        "We'd love to hear what you think — "
+        "ratings, suggestions, bug reports, or just a hello. 👋"
+    )
+
+    # Звёздочный рейтинг — встроенный виджет Streamlit 1.35 (Section 15)
+    rating = st.feedback("stars", key="user_feedback_stars")
+
+    # Текстовое поле для развёрнутого сообщения
+    message = st.text_area(
+        "Your message (optional)",
+        placeholder="Tell us what you love, what's missing, or what could be better...",
+        max_chars=1000,
+        key="user_feedback_message",
+    )
+
+    # Формируем mailto ссылку с предзаполненным телом письма
+    # Пользователь кликает — открывается его почтовый клиент с готовым письмом
+    stars_text = ""
+    if rating is not None:
+        # rating возвращает 0-4 (индекс), переводим в 1-5 звёзд
+        stars_count = rating + 1
+        stars_text = f"Rating: {'⭐' * stars_count} ({stars_count}/5)%0A"
+
+    msg_text = message.replace("\n", "%0A").replace(" ", "%20") if message else ""
+    subject = "SubAudit%20Feedback"
+    body = f"{stars_text}{msg_text}"
+
+    st.markdown(
+        f"[📧 Send feedback to biz.sardorbek@gmail.com]"
+        f"(mailto:biz.sardorbek@gmail.com?subject={subject}&body={body})",
+    )
+    st.caption(
+        "Clicking the link opens your email client with your message pre-filled."
+    )
+
+
 def _render_upgrade_cta(plan: str) -> None:
     """
     CTA для апгрейда плана — показываем, если план не PRO.
@@ -240,6 +322,9 @@ def _render_logout() -> None:
             "simulation_dict",
             "company_name",
             "currency",
+            # Дебаунс-флаги экспорта сбрасываем при выходе (Section 14)
+            "pdf_generating",
+            "excel_generating",
         ]
         for key in keys_to_clear:
             st.session_state.pop(key, None)
@@ -310,6 +395,12 @@ def main() -> None:
 
     # CTA апгрейда, если план не PRO (Section 4: 6_pricing.py)
     _render_upgrade_cta(plan)
+
+    # Управление подпиской — только для платных планов
+    _render_manage_subscription(plan)
+
+    # Форма обратной связи — для всех авторизованных пользователей
+    _render_feedback_section()
 
     # Кнопка выхода (Section 14)
     _render_logout()

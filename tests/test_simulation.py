@@ -15,12 +15,20 @@ Development Order: Step 8 (Section 16)
 Фикстуры (Section 17 — Test Fixtures):
   - tests/fixtures/sample_basic.csv         — happy path (500 rows, USD, 12 months)
   - tests/fixtures/sample_zero_arpu.csv     — все active amounts = 0 [NEW v2.9]
+
+ИСПРАВЛЕНИЯ:
+  - БАГ 1: антипаттерн try/except TypeError в test_none_guard_no_typeerror
+            и test_input_ranges_boundary_values заменён на прямые вызовы.
+            pytest автоматически ловит любое неожиданное исключение.
+  - БАГ 2: путь мока "streamlit.warning" исправлен на
+            "app.core.simulation.st.warning" во всех местах.
+  - БАГ 3: размытый assert (result is None or isinstance(result, dict))
+            в test_price_increase_negative_allowed заменён на строгий assert dict,
+            т.к. df_normal с price_increase=-0.5 — валидные данные, None недопустим.
 """
 
-import io
 import pytest
 import pandas as pd
-import numpy as np
 from unittest.mock import patch, MagicMock
 
 # ---------------------------------------------------------------------------
@@ -32,8 +40,6 @@ from app.core.simulation import run_simulation
 
 # ===========================================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФАБРИКИ ДАННЫХ
-# Создаём DataFrame напрямую, чтобы тесты не зависели от файловой системы CI.
-# При наличии файловых фикстур они подключены отдельно через @pytest.fixture.
 # ===========================================================================
 
 def _make_df(
@@ -47,25 +53,21 @@ def _make_df(
     """
     Генерирует минимальный DataFrame с колонками:
       customer_id, date, amount, status, currency
-    Используется для тестов, где нам нужны управляемые данные.
     Section 5 ("active rows"): status == 'active' AND amount > 0
     """
     rows = []
     for month_offset in range(n_months):
-        # Вычисляем год и месяц для каждого смещения
         total_month = start_month + month_offset - 1
         year = start_year + total_month // 12
         month = (total_month % 12) + 1
         for cust_idx in range(1, n_customers + 1):
-            rows.append(
-                {
-                    "customer_id": f"cust_{cust_idx:04d}",
-                    "date": pd.Timestamp(year=year, month=month, day=1),
-                    "amount": amount,
-                    "status": status,
-                    "currency": "USD",
-                }
-            )
+            rows.append({
+                "customer_id": f"cust_{cust_idx:04d}",
+                "date": pd.Timestamp(year=year, month=month, day=1),
+                "amount": amount,
+                "status": status,
+                "currency": "USD",
+            })
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
     return df
@@ -74,14 +76,13 @@ def _make_df(
 def _make_zero_arpu_df(n_customers: int = 10, n_months: int = 6) -> pd.DataFrame:
     """
     Генерирует DataFrame, где все active rows имеют amount == 0.
-    Соответствует фикстуре sample_zero_arpu.csv (Section 17).
-    Section 6 (ARPU): если count активных клиентов == 0 → 0.0;
+    Соответствует фикстуре sample_zero_arpu.csv (Section 17, NEW v2.9).
     Section 11 (base_arpu == 0 guard): должен вернуть None + st.warning().
     """
     return _make_df(
         n_customers=n_customers,
         n_months=n_months,
-        amount=0.0,  # ← все суммы равны нулю
+        amount=0.0,   # все суммы равны нулю
         status="active",
     )
 
@@ -113,14 +114,14 @@ def df_zero_arpu():
 @pytest.fixture
 def df_zero_mrr():
     """
-    DataFrame без активных строк вообще — base_mrr == 0.
+    DataFrame без активных строк — base_mrr == 0.
     Section 11: mrr_change_pct = None (не делить на ноль).
     """
     return _make_df(
         n_customers=5,
         n_months=3,
         amount=50.0,
-        status="churned",  # ← нет active rows → MRR = 0
+        status="churned",  # нет active rows → MRR = 0
     )
 
 
@@ -137,9 +138,7 @@ class TestSimulationBasicBehaviour:
     def test_zero_inputs_returns_base_decayed(self, df_normal):
         """
         Section 17: test_zero_inputs_returns_base_decayed
-        При нулевых входных параметрах (churn_reduction=0, new_customers_month=0,
-        price_increase=0) симуляция возвращает базовое затухание MRR
-        на основе текущего churn_rate.
+        При нулевых входных параметрах симуляция возвращает базовое затухание MRR.
         Результат не должен быть None — данные валидны.
         """
         result = run_simulation(
@@ -148,7 +147,6 @@ class TestSimulationBasicBehaviour:
             new_customers_month=0,
             price_increase=0.0,
         )
-        # Результат должен быть словарём, а не None
         assert result is not None, (
             "run_simulation() не должен возвращать None при валидных входных данных "
             "(Section 11)"
@@ -156,14 +154,12 @@ class TestSimulationBasicBehaviour:
         assert isinstance(result, dict), (
             "run_simulation() должен возвращать dict (Section 11)"
         )
-        # Ключи результата — минимальный набор для Dashboard
         assert "monthly_mrr" in result, "Ожидается ключ 'monthly_mrr' в результате"
         assert "mrr_change_pct" in result, "Ожидается ключ 'mrr_change_pct' в результате"
 
     def test_zero_inputs_mrr_is_non_negative(self, df_normal):
         """
-        Section 11: base MRR затухает экспоненциально; при нулевом churn
-        MRR ≥ base_mrr. Проверяем, что все значения monthly_mrr >= 0.
+        Section 11: все значения monthly_mrr >= 0.
         """
         result = run_simulation(
             df=df_normal,
@@ -172,8 +168,7 @@ class TestSimulationBasicBehaviour:
             price_increase=0.0,
         )
         assert result is not None
-        monthly = result["monthly_mrr"]
-        assert all(v >= 0 for v in monthly), (
+        assert all(v >= 0 for v in result["monthly_mrr"]), (
             "Все значения monthly_mrr должны быть >= 0 (Section 11)"
         )
 
@@ -198,11 +193,7 @@ class TestSimulationBasicBehaviour:
         )
         assert result_no_reduction is not None
         assert result_with_reduction is not None
-
-        # Финальный MRR при сниженном оттоке должен быть выше
-        final_no_red = result_no_reduction["monthly_mrr"][-1]
-        final_with_red = result_with_reduction["monthly_mrr"][-1]
-        assert final_with_red >= final_no_red, (
+        assert result_with_reduction["monthly_mrr"][-1] >= result_no_reduction["monthly_mrr"][-1], (
             "Снижение churn_reduction должно замедлять затухание MRR (Section 11)"
         )
 
@@ -219,7 +210,6 @@ class TestSimulationBasicBehaviour:
         )
         assert result is not None
         monthly = result["monthly_mrr"]
-        # Все значения должны быть равны первому (нет оттока)
         first_val = monthly[0]
         for i, val in enumerate(monthly):
             assert abs(val - first_val) < 0.01, (
@@ -229,8 +219,8 @@ class TestSimulationBasicBehaviour:
 
     def test_new_customers_increases_mrr(self, df_normal):
         """
-        Section 11: new_customers_month > 0 добавляет новых клиентов
-        ежемесячно → итоговый MRR должен быть выше, чем без новых клиентов.
+        Section 11: new_customers_month > 0 добавляет новых клиентов →
+        итоговый MRR должен быть выше, чем без новых клиентов.
         """
         result_no_new = run_simulation(
             df=df_normal,
@@ -286,8 +276,6 @@ class TestSimulationEdgeCases:
         Section 11: если base_mrr == 0 → mrr_change_pct = None.
         Нельзя делить на ноль — результат должен содержать None, а не падать.
         """
-        # При base_mrr == 0 функция может вернуть dict с mrr_change_pct=None
-        # или вернуть None целиком — оба варианта покрываем
         result = run_simulation(
             df=df_zero_mrr,
             churn_reduction=0.0,
@@ -305,20 +293,17 @@ class TestSimulationEdgeCases:
         Section 17: test_none_guard_no_typeerror
         При любых входных данных run_simulation() не должен бросать TypeError.
         Допустимы только None или dict в качестве возврата.
+
+        БАГ 1 ИСПРАВЛЕН: убран антипаттерн try/except TypeError.
+        pytest автоматически фиксирует любое исключение — включая TypeError.
         """
-        try:
-            result = run_simulation(
-                df=df_zero_mrr,
-                churn_reduction=0.0,
-                new_customers_month=0,
-                price_increase=0.0,
-            )
-        except TypeError as exc:
-            pytest.fail(
-                f"run_simulation() бросил TypeError: {exc} — "
-                f"нарушение None-guard (Section 11, Section 17)"
-            )
-        # Результат должен быть либо None, либо dict
+        # БАГ 1 ИСПРАВЛЕН: прямой вызов без try/except
+        result = run_simulation(
+            df=df_zero_mrr,
+            churn_reduction=0.0,
+            new_customers_month=0,
+            price_increase=0.0,
+        )
         assert result is None or isinstance(result, dict), (
             "run_simulation() должен возвращать None или dict (Section 11)"
         )
@@ -346,6 +331,9 @@ class TestSimulationEdgeCases:
           new_customers_month: 0–10,000
           price_increase: -0.5–5.0
         Проверяем, что граничные значения не вызывают исключений.
+
+        БАГ 1 ИСПРАВЛЕН: убран антипаттерн try/except Exception.
+        pytest автоматически фиксирует любое неожиданное исключение.
         """
         boundary_cases = [
             # (churn_reduction, new_customers_month, price_increase)
@@ -354,20 +342,18 @@ class TestSimulationEdgeCases:
             (0.5, 100, 0.0),
         ]
         for cr, ncm, pi in boundary_cases:
-            try:
-                result = run_simulation(
-                    df=df_normal,
-                    churn_reduction=cr,
-                    new_customers_month=ncm,
-                    price_increase=pi,
-                )
-            except Exception as exc:
-                pytest.fail(
-                    f"run_simulation() упал на граничных значениях "
-                    f"(churn_reduction={cr}, new_customers_month={ncm}, "
-                    f"price_increase={pi}): {exc} — Section 11"
-                )
-            assert result is None or isinstance(result, dict)
+            # БАГ 1 ИСПРАВЛЕН: прямой вызов без try/except
+            result = run_simulation(
+                df=df_normal,
+                churn_reduction=cr,
+                new_customers_month=ncm,
+                price_increase=pi,
+            )
+            assert result is None or isinstance(result, dict), (
+                f"run_simulation() вернул неожиданный тип при "
+                f"churn_reduction={cr}, new_customers_month={ncm}, "
+                f"price_increase={pi} — ожидался None или dict (Section 11)"
+            )
 
 
 # ===========================================================================
@@ -376,6 +362,13 @@ class TestSimulationEdgeCases:
 # Section 11: "base_arpu == 0 Guard (NEW in v2.9)"
 # Section 17: test_base_arpu_zero_returns_none, test_base_arpu_zero_shows_warning
 # ===========================================================================
+
+# Точный текст предупреждения из Section 11 — не менять
+_EXPECTED_ARPU_WARNING = (
+    "ARPU is zero — price increase cannot be modelled. "
+    "Upload data with non-zero active amounts."
+)
+
 
 class TestBaseArpuZeroGuard:
     """
@@ -388,12 +381,10 @@ class TestBaseArpuZeroGuard:
          producing wrong results."
 
     Section 11 (base_arpu == 0 Guard):
-        Condition: base_arpu == 0
-        Required Behaviour:
-            - Return None immediately.
-            - Show st.warning("ARPU is zero — price increase cannot be modelled.
-              Upload data with non-zero active amounts.")
-            - Do NOT proceed with simulation.
+        - Return None immediately.
+        - Show st.warning("ARPU is zero — price increase cannot be modelled.
+          Upload data with non-zero active amounts.")
+        - Do NOT proceed with simulation.
 
     Фикстура: sample_zero_arpu.csv (Section 17) — все active amounts = 0.
     """
@@ -401,15 +392,18 @@ class TestBaseArpuZeroGuard:
     def test_base_arpu_zero_returns_none(self, df_zero_arpu):
         """
         Section 17 [NEW v2.9]: test_base_arpu_zero_returns_none
-        Когда все active amount == 0, ARPU == 0 → run_simulation() должен
-        вернуть None (Section 11, Section 1 Changelog).
+        Когда все active amount == 0, ARPU == 0 → run_simulation() → None.
+        Section 11, Section 1 Changelog.
         """
-        result = run_simulation(
-            df=df_zero_arpu,
-            churn_reduction=0.0,
-            new_customers_month=0,
-            price_increase=0.0,
-        )
+        # Заглушаем st.warning — он вызывается как побочный эффект guard
+        # БАГ 2 ИСПРАВЛЕН: полный путь мока
+        with patch("app.core.simulation.st.warning"):
+            result = run_simulation(
+                df=df_zero_arpu,
+                churn_reduction=0.0,
+                new_customers_month=0,
+                price_increase=0.0,
+            )
         assert result is None, (
             "run_simulation() должен вернуть None при base_arpu == 0 "
             "(Section 11, Section 1 v2.9 Changelog)"
@@ -417,17 +411,19 @@ class TestBaseArpuZeroGuard:
 
     def test_base_arpu_zero_returns_none_with_price_increase(self, df_zero_arpu):
         """
-        Дополнительная проверка: даже при price_increase > 0 guard должен
-        сработать до умножения (Section 11 — "return None immediately").
+        Даже при price_increase > 0 guard должен сработать до умножения.
+        Section 11 — "return None immediately".
         Было: new_arpu = 0 * (1 + price_increase) = 0 → тихо неверный результат.
         Стало: guard возвращает None до любых вычислений.
         """
-        result = run_simulation(
-            df=df_zero_arpu,
-            churn_reduction=0.0,
-            new_customers_month=5,
-            price_increase=0.5,  # +50% — должно быть проигнорировано
-        )
+        # БАГ 2 ИСПРАВЛЕН: полный путь мока
+        with patch("app.core.simulation.st.warning"):
+            result = run_simulation(
+                df=df_zero_arpu,
+                churn_reduction=0.0,
+                new_customers_month=5,
+                price_increase=0.5,  # должно быть проигнорировано guard-ом
+            )
         assert result is None, (
             "При base_arpu == 0 guard должен сработать ДО умножения на price_increase "
             "(Section 11)"
@@ -437,12 +433,13 @@ class TestBaseArpuZeroGuard:
         """
         Section 17 [NEW v2.9]: test_base_arpu_zero_shows_warning
         При base_arpu == 0 функция должна вызвать st.warning() с точным текстом
-        из спецификации Section 11:
-            "ARPU is zero — price increase cannot be modelled.
-             Upload data with non-zero active amounts."
+        из Section 11.
+
+        БАГ 2 ИСПРАВЛЕН: patch("app.core.simulation.st.warning")
+        вместо patch("streamlit.warning").
         """
-        # Мокируем st.warning для перехвата вызова
-        with patch("streamlit.warning") as mock_warning:
+        # БАГ 2 ИСПРАВЛЕН: полный путь мока
+        with patch("app.core.simulation.st.warning") as mock_warning:
             result = run_simulation(
                 df=df_zero_arpu,
                 churn_reduction=0.0,
@@ -450,28 +447,21 @@ class TestBaseArpuZeroGuard:
                 price_increase=0.0,
             )
 
-        # Результат должен быть None
         assert result is None, (
             "run_simulation() должен вернуть None при base_arpu == 0 (Section 11)"
         )
 
-        # st.warning() должен быть вызван хотя бы один раз
         assert mock_warning.called, (
             "st.warning() должен быть вызван при base_arpu == 0 (Section 11)"
         )
 
         # Проверяем точный текст предупреждения (Section 11 — verbatim)
-        expected_warning = (
-            "ARPU is zero — price increase cannot be modelled. "
-            "Upload data with non-zero active amounts."
-        )
-        # Собираем все переданные аргументы из всех вызовов mock
         all_warning_args = [
-            str(call_args.args[0]) if call_args.args else str(call_args.kwargs.get("body", ""))
-            for call_args in mock_warning.call_args_list
+            str(c.args[0]) if c.args else str(c.kwargs.get("body", ""))
+            for c in mock_warning.call_args_list
         ]
-        assert any(expected_warning in arg for arg in all_warning_args), (
-            f"st.warning() должен быть вызван с текстом:\n  '{expected_warning}'\n"
+        assert any(_EXPECTED_ARPU_WARNING in arg for arg in all_warning_args), (
+            f"st.warning() должен быть вызван с текстом:\n  '{_EXPECTED_ARPU_WARNING}'\n"
             f"Фактические вызовы:\n  {all_warning_args}\n"
             f"(Section 11 — verbatim warning text)"
         )
@@ -479,13 +469,10 @@ class TestBaseArpuZeroGuard:
     def test_base_arpu_zero_does_not_proceed(self, df_zero_arpu):
         """
         Section 11: "Do NOT proceed with simulation."
-        Проверяем, что при base_arpu == 0 внутренние вычисления симуляции
-        НЕ выполняются (функция возвращает None немедленно).
-        Косвенная проверка через мок вычислительной части.
+        При base_arpu == 0 функция возвращает None немедленно.
         """
-        # Патчим любую тяжёлую внутреннюю функцию симуляции, если она существует.
-        # Если такой функции нет — тест проверяет только None-возврат.
-        with patch("streamlit.warning"):
+        # БАГ 2 ИСПРАВЛЕН: полный путь мока
+        with patch("app.core.simulation.st.warning"):
             result = run_simulation(
                 df=df_zero_arpu,
                 churn_reduction=0.5,
@@ -537,7 +524,11 @@ class TestSimulationParameters:
     def test_price_increase_negative_allowed(self, df_normal):
         """
         Section 11: price_increase ∈ [-0.5, 5.0].
-        Отрицательное значение (-0.5) означает снижение цены.
+        Отрицательное значение (-0.5) означает снижение цены — допустимо.
+
+        БАГ 3 ИСПРАВЛЕН: при df_normal (валидные данные, ARPU > 0)
+        и допустимом price_increase=-0.5 функция должна вернуть dict, не None.
+        Размытый assert (None or dict) заменён на строгий assert isinstance(result, dict).
         """
         result = run_simulation(
             df=df_normal,
@@ -545,8 +536,11 @@ class TestSimulationParameters:
             new_customers_month=0,
             price_increase=-0.5,
         )
-        # Не должно падать — отрицательный price_increase допустим
-        assert result is None or isinstance(result, dict)
+        # БАГ 3 ИСПРАВЛЕН: df_normal имеет ARPU > 0, guard не срабатывает
+        assert isinstance(result, dict), (
+            "При валидных данных и допустимом price_increase=-0.5 "
+            "run_simulation() должен вернуть dict (Section 11)"
+        )
 
     def test_new_customers_upper_bound(self, df_normal):
         """
@@ -559,7 +553,10 @@ class TestSimulationParameters:
             new_customers_month=10_000,
             price_increase=0.0,
         )
-        assert result is None or isinstance(result, dict)
+        assert isinstance(result, dict), (
+            "При new_customers_month=10_000 run_simulation() должен вернуть dict "
+            "(Section 11)"
+        )
 
     def test_result_dict_contains_required_keys(self, df_normal):
         """
@@ -590,7 +587,7 @@ class TestSimulationWithFileFixtures:
     """
     Интеграционные тесты с CSV-фикстурами из tests/fixtures/.
     Section 17 — Test Fixtures.
-    Тесты пропускаются (xfail), если файл фикстуры ещё не создан.
+    Тесты пропускаются (pytest.skip), если файл фикстуры ещё не создан.
     """
 
     @pytest.fixture
@@ -601,8 +598,7 @@ class TestSimulationWithFileFixtures:
         """
         fixture_path = "tests/fixtures/sample_zero_arpu.csv"
         try:
-            df = pd.read_csv(fixture_path, parse_dates=["date"])
-            return df
+            return pd.read_csv(fixture_path, parse_dates=["date"])
         except FileNotFoundError:
             pytest.skip(
                 f"Фикстура {fixture_path} не найдена. "
@@ -617,8 +613,7 @@ class TestSimulationWithFileFixtures:
         """
         fixture_path = "tests/fixtures/sample_basic.csv"
         try:
-            df = pd.read_csv(fixture_path, parse_dates=["date"])
-            return df
+            return pd.read_csv(fixture_path, parse_dates=["date"])
         except FileNotFoundError:
             pytest.skip(
                 f"Фикстура {fixture_path} не найдена. "
@@ -630,7 +625,8 @@ class TestSimulationWithFileFixtures:
         Интеграционный тест: sample_zero_arpu.csv → run_simulation() → None.
         Section 17 (NEW v2.9): sample_zero_arpu.csv — triggers base_arpu==0 guard.
         """
-        with patch("streamlit.warning"):
+        # БАГ 2 ИСПРАВЛЕН: полный путь мока
+        with patch("app.core.simulation.st.warning"):
             result = run_simulation(
                 df=sample_zero_arpu_from_file,
                 churn_reduction=0.0,

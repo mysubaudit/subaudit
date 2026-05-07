@@ -1,24 +1,33 @@
 """
 test_session.py — Тесты для сессионной логики SubAudit.
 
-Покрывает:
-  - MAX AGE (8 часов) и IDLE (Section 14 / session_start, last_activity)
-  - keep_alive_if_needed() — Section 11 и Section 12
-  - Тест-кейсы из Section 17:
-      test_max_age_expires
-      test_idle_expires
-      test_render_does_not_reset_idle
-      test_keep_alive_called_once_per_day  (NEW v2.9)
-      test_keep_alive_skipped_same_day     (NEW v2.9)
-      test_keep_alive_not_inside_verify_magic_link (NEW v2.9)
+Покрывает все тест-кейсы из Section 17:
+    test_max_age_expires
+    test_idle_expires
+    test_render_does_not_reset_idle
+    test_keep_alive_called_once_per_day  (NEW v2.9)
+    test_keep_alive_skipped_same_day     (NEW v2.9)
+    test_keep_alive_not_inside_verify_magic_link (NEW v2.9)
 
-Согласно Section 16 (Development Order), Step 8 — полный тест-сьют.
+Согласно Section 16, Step 8 — полный тест-сьют.
 Согласно Section 14 — session_start и last_activity хранятся как Unix timestamp (float).
+
+ИСПРАВЛЕНИЯ:
+  - БАГ 1: тесты keep_alive / verify_magic_link теперь тестируют реальные модули
+            app/auth/supabase_auth.py через mocker.patch, а не локальные заглушки.
+            Локальные заглушки оставлены ТОЛЬКО для тестов is_session_expired
+            (session guard из main.py — не выделен в отдельный модуль).
+  - БАГ 2: проверка ISO timestamp через datetime.fromisoformat() + tzinfo,
+            а не хрупкое строковое условие с or/and без скобок.
+  - БАГ 3: антипаттерн try/except в test_keep_alive_failure_does_not_raise
+            заменён на прямой вызов (pytest сам поймает любое исключение).
+  - БАГ 4: доступ к аргументам мока через call_args.args[0] (Python 3.8+)
+            вместо хрупкого call_args[0][0].
 """
 
 import time
 import pytest
-from datetime import date, timezone, datetime
+from datetime import date, timedelta, timezone, datetime
 from unittest.mock import MagicMock, patch, call
 
 
@@ -26,92 +35,29 @@ from unittest.mock import MagicMock, patch, call
 # Константы сессии (Section 14 + main.py guard logic)
 # ---------------------------------------------------------------------------
 SESSION_MAX_AGE = 8 * 3600   # 8 часов в секундах (Section 14)
-SESSION_IDLE_TIMEOUT = 3600  # 1 час простоя (типовое значение для SaaS)
+SESSION_IDLE_TIMEOUT = 3600  # 1 час простоя (Section 14)
 
 
 # ---------------------------------------------------------------------------
-# Вспомогательная функция: эмулирует логику main.py session guard
+# Локальная заглушка is_session_expired — эмулирует guard из main.py.
+# Тестируется напрямую, т.к. логика встроена в main.py (не отдельный модуль).
 # ---------------------------------------------------------------------------
-def is_session_expired(session_state: dict, now: float) -> bool:
+def _is_session_expired(session_state: dict, now: float) -> bool:
     """
     Возвращает True, если сессия истекла.
-    Логика соответствует main.py:
-      - session_start отсутствует → считается истёкшей
+    Логика соответствует main.py session guard:
+      - session_start отсутствует → истекла
       - now - session_start > SESSION_MAX_AGE → истекла (Section 14)
       - now - last_activity > SESSION_IDLE_TIMEOUT → истекла (Section 14)
     """
     if "session_start" not in session_state:
         return True
-
-    # Проверка максимального возраста сессии
     if now - session_state["session_start"] > SESSION_MAX_AGE:
         return True
-
-    # Проверка простоя — last_activity обновляется только явными действиями
-    # (Section 14: "updated on explicit user actions ONLY")
     if "last_activity" in session_state:
         if now - session_state["last_activity"] > SESSION_IDLE_TIMEOUT:
             return True
-
     return False
-
-
-# ---------------------------------------------------------------------------
-# Вспомогательная функция: эмулирует keep_alive_if_needed() из Section 11/12
-# ---------------------------------------------------------------------------
-def keep_alive_if_needed(user_email: str, session_state: dict, supabase_client) -> None:
-    """
-    Резервный keepalive для Supabase free-tier (Section 11, Section 12).
-
-    Условие "один раз в день":
-      - Сравниваем session_state.get('last_keepalive_date') с date.today()
-      - Если даты отличаются (или ключ отсутствует) → делаем ping → сохраняем date.today()
-      - Если совпадают → пропускаем
-
-    Ping: INSERT в таблицу health_ping со значением datetime.now(timezone.utc).isoformat()
-    НЕ используем строку 'NOW()' (Section 11).
-
-    При ошибке: log_warning(), НЕ raise, НЕ показывать UI-ошибку (Section 11).
-    """
-    today = date.today()
-    last_date = session_state.get("last_keepalive_date")
-
-    # Условие "один раз в день" (Section 11)
-    if last_date == today:
-        return  # Уже выполнялся сегодня — пропускаем
-
-    try:
-        # Ping: INSERT datetime.now(timezone.utc).isoformat() — НЕ строку 'NOW()' (Section 11)
-        ping_value = datetime.now(timezone.utc).isoformat()
-        supabase_client.table("health_ping").insert({"pinged_at": ping_value}).execute()
-        # Сохраняем дату последнего keepalive
-        session_state["last_keepalive_date"] = today
-    except Exception as exc:
-        # При ошибке только логируем — не поднимаем исключение (Section 11)
-        # В реальном коде: log_warning() из app/observability/logger.py
-        pass  # log_warning(f"keep_alive_if_needed failed: {exc}")
-
-
-# ---------------------------------------------------------------------------
-# Вспомогательная функция: эмулирует verify_magic_link() из Section 12
-# ---------------------------------------------------------------------------
-def verify_magic_link(token: str, session_state: dict, supabase_client):
-    """
-    Проверяет magic link токен через Supabase (Section 12).
-
-    ВАЖНО (Section 11, Section 12):
-      - keep_alive_if_needed() НЕ вызывается внутри verify_magic_link()
-      - Вызов keepalive происходит в auth_callback.py ПОСЛЕ успешной верификации
-
-    Returns: user_dict or None
-    """
-    try:
-        response = supabase_client.auth.verify_otp({"token": token, "type": "email"})
-        if response and response.user:
-            return {"email": response.user.email, "id": response.user.id}
-        return None
-    except Exception:
-        return None
 
 
 # ===========================================================================
@@ -127,10 +73,10 @@ class TestMaxAgeExpires:
         """
         now = time.time()
         session_state = {
-            "session_start": now - SESSION_MAX_AGE - 1,  # Больше 8 часов назад
-            "last_activity": now - 10,                   # Недавняя активность — не важно
+            "session_start": now - SESSION_MAX_AGE - 1,  # больше 8 часов назад
+            "last_activity": now - 10,
         }
-        assert is_session_expired(session_state, now) is True
+        assert _is_session_expired(session_state, now) is True
 
     def test_max_age_not_expired_within_limit(self):
         """
@@ -141,26 +87,26 @@ class TestMaxAgeExpires:
             "session_start": now - 3600,  # 1 час назад
             "last_activity": now - 60,    # 1 минута назад
         }
-        assert is_session_expired(session_state, now) is False
+        assert _is_session_expired(session_state, now) is False
 
     def test_max_age_exactly_at_boundary(self):
         """
         Сессия ровно на границе MAX_AGE — ещё НЕ истекла (граничный случай).
+        Условие строгое: > SESSION_MAX_AGE, не >=.
         """
         now = time.time()
         session_state = {
-            "session_start": now - SESSION_MAX_AGE,  # Ровно 8 часов
+            "session_start": now - SESSION_MAX_AGE,  # ровно 8 часов
             "last_activity": now - 10,
         }
-        # Ровно на границе — не превышает, не истекла
-        assert is_session_expired(session_state, now) is False
+        assert _is_session_expired(session_state, now) is False
 
     def test_missing_session_start_is_expired(self):
         """
         Отсутствие session_start → сессия считается истёкшей (Section 14).
         """
         session_state = {}
-        assert is_session_expired(session_state, time.time()) is True
+        assert _is_session_expired(session_state, time.time()) is True
 
 
 # ===========================================================================
@@ -176,10 +122,10 @@ class TestIdleExpires:
         """
         now = time.time()
         session_state = {
-            "session_start": now - 1800,                          # 30 мин назад (в пределах MAX_AGE)
-            "last_activity": now - SESSION_IDLE_TIMEOUT - 1,      # Простой > порога
+            "session_start": now - 1800,                       # 30 мин назад (в пределах MAX_AGE)
+            "last_activity": now - SESSION_IDLE_TIMEOUT - 1,  # простой превышен
         }
-        assert is_session_expired(session_state, now) is True
+        assert _is_session_expired(session_state, now) is True
 
     def test_idle_not_expired_within_limit(self):
         """
@@ -188,22 +134,21 @@ class TestIdleExpires:
         now = time.time()
         session_state = {
             "session_start": now - 1800,
-            "last_activity": now - SESSION_IDLE_TIMEOUT + 60,  # Ещё 1 минута до истечения
+            "last_activity": now - SESSION_IDLE_TIMEOUT + 60,  # ещё 1 минута до истечения
         }
-        assert is_session_expired(session_state, now) is False
+        assert _is_session_expired(session_state, now) is False
 
     def test_idle_no_last_activity_key(self):
         """
         Если last_activity отсутствует — idle timeout не применяется.
-        Сессия не истекает только по отсутствию ключа.
+        Сессия не считается истёкшей только из-за отсутствия ключа.
         """
         now = time.time()
         session_state = {
             "session_start": now - 1800,
-            # last_activity отсутствует
+            # last_activity намеренно отсутствует
         }
-        # Без last_activity idle timeout не срабатывает
-        assert is_session_expired(session_state, now) is False
+        assert _is_session_expired(session_state, now) is False
 
 
 # ===========================================================================
@@ -222,18 +167,17 @@ class TestRenderDoesNotResetIdle:
         last_activity НЕ должен изменяться после рендера.
         """
         now = time.time()
-        idle_last_activity = now - 2000  # Давно не было действий
+        idle_last_activity = now - 2000  # давно не было действий
 
         session_state = {
             "session_start": now - 1800,
             "last_activity": idle_last_activity,
         }
 
-        # Эмулируем "рендер страницы" — не меняем last_activity
-        # (В реальном коде: render-функции не вызывают record_activity())
-        _ = session_state.get("metrics_dict")  # Типичный read-only доступ при рендере
+        # Эмулируем "рендер страницы" — read-only доступ к данным
+        # В реальном коде render-функции не вызывают record_activity()
+        _ = session_state.get("metrics_dict")
 
-        # last_activity не изменился после рендера
         assert session_state["last_activity"] == idle_last_activity
 
     def test_explicit_action_resets_idle(self):
@@ -247,7 +191,6 @@ class TestRenderDoesNotResetIdle:
             "last_activity": now - 2000,
         }
 
-        # Эмулируем явное действие (record_activity() из main.py)
         def record_activity(ss: dict, current_time: float) -> None:
             """Обновляет last_activity только при явном действии (Section 14)."""
             ss["last_activity"] = current_time
@@ -260,50 +203,72 @@ class TestRenderDoesNotResetIdle:
 # ===========================================================================
 # ТЕСТ 4: test_keep_alive_called_once_per_day (NEW v2.9)
 # keep_alive_if_needed() — условие "один раз в день" (Section 11)
+# Тестируем реальный модуль: app/auth/supabase_auth.py
 # ===========================================================================
 class TestKeepAliveCalledOncePerDay:
     """
-    Section 11: keep_alive_if_needed() должна вызывать ping
-    при первом вызове в новый день (last_keepalive_date отличается от date.today()).
+    Section 11: keep_alive_if_needed() вызывает ping
+    при первом вызове в новый день (last_keepalive_date != date.today()).
     """
 
-    def test_keep_alive_called_once_per_day(self):
+    def test_keep_alive_called_once_per_day(self, mocker):
         """
-        Если last_keepalive_date вчера (или отсутствует) → ping выполняется.
+        Если last_keepalive_date отсутствует → ping выполняется.
         После выполнения session_state['last_keepalive_date'] == date.today().
-        """
-        session_state = {}  # last_keepalive_date отсутствует
 
+        БАГ 1 ИСПРАВЛЕН: тестируем реальный модуль через mocker.patch.
+        БАГ 2 ИСПРАВЛЕН: проверка ISO timestamp через datetime.fromisoformat().
+        БАГ 4 ИСПРАВЛЕН: доступ через call_args.args[0].
+        """
         mock_supabase = MagicMock()
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
         mock_table.insert.return_value = mock_table
         mock_table.execute.return_value = MagicMock()
 
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        # Патчим session_state и supabase клиент в реальном модуле
+        fake_state = {}
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
 
-        # Проверяем, что ping был выполнен
+        from app.auth.supabase_auth import keep_alive_if_needed
+        keep_alive_if_needed("user@example.com")
+
+        # Ping должен быть выполнен один раз в таблицу health_ping
         mock_supabase.table.assert_called_once_with("health_ping")
         mock_table.insert.assert_called_once()
 
-        # Проверяем аргумент: должен быть ISO timestamp (НЕ строка 'NOW()') (Section 11)
-        insert_call_kwargs = mock_table.insert.call_args[0][0]
-        ping_value = insert_call_kwargs.get("pinged_at", "")
-        assert ping_value != "NOW()", "ping_value НЕ должен быть строкой 'NOW()' (Section 11)"
-        # Проверяем что это валидный ISO datetime с timezone
-        assert "T" in ping_value and "+" in ping_value or "Z" in ping_value or "+00:00" in ping_value
+        # БАГ 4 ИСПРАВЛЕН: надёжный доступ к аргументам мока
+        args, kwargs = mock_table.insert.call_args
+        insert_payload = args[0] if args else kwargs
+        ping_value = insert_payload.get("pinged_at", "")
+
+        # Section 11: НЕ строка 'NOW()' — должен быть ISO datetime
+        assert ping_value != "NOW()", (
+            "Section 11: ping_value НЕ должен быть строкой 'NOW()'"
+        )
+
+        # БАГ 2 ИСПРАВЛЕН: проверка через fromisoformat + tzinfo вместо строкового or/and
+        try:
+            parsed_dt = datetime.fromisoformat(ping_value)
+        except ValueError:
+            pytest.fail(
+                f"Section 11: ping_value '{ping_value}' не является валидным ISO datetime"
+            )
+        assert parsed_dt.tzinfo is not None, (
+            "Section 11: ping datetime должен содержать timezone "
+            "(datetime.now(timezone.utc))"
+        )
 
         # last_keepalive_date установлен в date.today()
-        assert session_state.get("last_keepalive_date") == date.today()
+        assert fake_state.get("last_keepalive_date") == date.today()
 
-    def test_keep_alive_called_when_date_is_yesterday(self):
+    def test_keep_alive_called_when_date_is_yesterday(self, mocker):
         """
         Если last_keepalive_date = вчера → ping должен выполниться.
         """
-        from datetime import timedelta
-
         yesterday = date.today() - timedelta(days=1)
-        session_state = {"last_keepalive_date": yesterday}
+        fake_state = {"last_keepalive_date": yesterday}
 
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -311,41 +276,49 @@ class TestKeepAliveCalledOncePerDay:
         mock_table.insert.return_value = mock_table
         mock_table.execute.return_value = MagicMock()
 
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+
+        from app.auth.supabase_auth import keep_alive_if_needed
+        keep_alive_if_needed("user@example.com")
 
         # Вчерашняя дата ≠ сегодня → ping выполняется
         mock_supabase.table.assert_called_once_with("health_ping")
-        assert session_state["last_keepalive_date"] == date.today()
+        assert fake_state["last_keepalive_date"] == date.today()
 
 
 # ===========================================================================
 # ТЕСТ 5: test_keep_alive_skipped_same_day (NEW v2.9)
-# keep_alive_if_needed() — пропускает если last_keepalive_date == date.today() (Section 11)
+# keep_alive_if_needed() пропускает если last_keepalive_date == date.today()
+# Section 11
 # ===========================================================================
 class TestKeepAliveSkippedSameDay:
     """
-    Section 11: keep_alive_if_needed() должна ПРОПУСКАТЬ ping,
-    если last_keepalive_date == date.today() (уже вызывалась сегодня).
+    Section 11: keep_alive_if_needed() ПРОПУСКАЕТ ping,
+    если last_keepalive_date == date.today().
     """
 
-    def test_keep_alive_skipped_same_day(self):
+    def test_keep_alive_skipped_same_day(self, mocker):
         """
         last_keepalive_date == date.today() → ping НЕ выполняется (Section 11).
         """
-        session_state = {"last_keepalive_date": date.today()}  # Уже сегодня
+        fake_state = {"last_keepalive_date": date.today()}  # уже сегодня
 
         mock_supabase = MagicMock()
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
 
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        from app.auth.supabase_auth import keep_alive_if_needed
+        keep_alive_if_needed("user@example.com")
 
         # Supabase НЕ должен быть вызван
         mock_supabase.table.assert_not_called()
 
-    def test_keep_alive_skipped_twice_in_same_day(self):
+    def test_keep_alive_skipped_twice_in_same_day(self, mocker):
         """
         Два вызова в один день → ping выполняется только при первом.
         """
-        session_state = {}  # Первый вызов — ключа нет
+        fake_state = {}  # первый вызов — ключа нет
 
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -353,40 +326,51 @@ class TestKeepAliveSkippedSameDay:
         mock_table.insert.return_value = mock_table
         mock_table.execute.return_value = MagicMock()
 
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+
+        from app.auth.supabase_auth import keep_alive_if_needed
+
         # Первый вызов — должен выполнить ping
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        keep_alive_if_needed("user@example.com")
         assert mock_supabase.table.call_count == 1
 
         # Второй вызов в тот же день — должен пропустить
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
-        # call_count не увеличился
+        keep_alive_if_needed("user@example.com")
+        # call_count не должен увеличиться
         assert mock_supabase.table.call_count == 1
 
-    def test_keep_alive_failure_does_not_set_date(self):
+    def test_keep_alive_failure_does_not_set_date(self, mocker):
         """
         Если ping завершился с ошибкой — last_keepalive_date НЕ должен обновляться.
         При следующем вызове ping должен попробоваться снова.
+        Section 11: «On failure: Log warning. Do NOT raise.»
         """
-        session_state = {}
+        fake_state = {}
 
         mock_supabase = MagicMock()
         mock_table = MagicMock()
         mock_supabase.table.return_value = mock_table
         mock_table.insert.return_value = mock_table
-        # execute() бросает исключение — имитация ошибки Supabase
         mock_table.execute.side_effect = Exception("Supabase connection error")
 
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+
+        from app.auth.supabase_auth import keep_alive_if_needed
+        keep_alive_if_needed("user@example.com")
 
         # При ошибке last_keepalive_date НЕ устанавливается
-        assert "last_keepalive_date" not in session_state
+        assert "last_keepalive_date" not in fake_state
 
-    def test_keep_alive_failure_does_not_raise(self):
+    def test_keep_alive_failure_does_not_raise(self, mocker):
         """
         Section 11: при ошибке keepalive — НЕ raise, НЕ показывать UI-ошибку.
-        Функция должна молча завершиться.
+
+        БАГ 3 ИСПРАВЛЕН: убран антипаттерн try/except вокруг вызова.
+        Прямой вызов: если функция бросит — pytest сам зафиксирует падение.
         """
-        session_state = {}
+        fake_state = {}
 
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -394,11 +378,14 @@ class TestKeepAliveSkippedSameDay:
         mock_table.insert.return_value = mock_table
         mock_table.execute.side_effect = Exception("Network error")
 
-        # Не должно бросать исключение
-        try:
-            keep_alive_if_needed("user@example.com", session_state, mock_supabase)
-        except Exception as exc:
-            pytest.fail(f"keep_alive_if_needed НЕ должна бросать исключение: {exc}")
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+
+        from app.auth.supabase_auth import keep_alive_if_needed
+
+        # БАГ 3 ИСПРАВЛЕН: прямой вызов без try/except
+        # Если функция бросит исключение — тест упадёт автоматически
+        keep_alive_if_needed("user@example.com")
 
 
 # ===========================================================================
@@ -408,113 +395,127 @@ class TestKeepAliveSkippedSameDay:
 class TestKeepAliveNotInsideVerifyMagicLink:
     """
     Section 11, Section 12:
-    keep_alive_if_needed() должна вызываться в auth_callback.py ПОСЛЕ
+    keep_alive_if_needed() вызывается в auth_callback.py ПОСЛЕ
     успешной verify_magic_link(), но НЕ внутри самой verify_magic_link().
-
-    Тест проверяет, что реализация verify_magic_link() не содержит
-    вызова keep_alive_if_needed() внутри своего тела.
     """
 
-    def test_keep_alive_not_inside_verify_magic_link(self):
+    def test_keep_alive_not_inside_verify_magic_link(self, mocker):
         """
-        Проверяем через мок, что внутри verify_magic_link() keepalive НЕ вызывается.
+        Внутри verify_magic_link() keepalive НЕ вызывается.
+        Проверяем через мок supabase: таблица health_ping не должна трогаться.
+
+        БАГ 1 ИСПРАВЛЕН: тестируем реальный verify_magic_link из supabase_auth.py.
         """
-        session_state = {}
-
-        mock_supabase = MagicMock()
-
-        # Настраиваем успешный ответ verify_otp
+        # Мок успешного ответа Supabase auth
         mock_user = MagicMock()
         mock_user.email = "user@example.com"
         mock_user.id = "abc-123"
         mock_auth_response = MagicMock()
         mock_auth_response.user = mock_user
+
+        mock_supabase = MagicMock()
         mock_supabase.auth.verify_otp.return_value = mock_auth_response
 
-        # Отслеживаем вызовы health_ping — их не должно быть внутри verify_magic_link
-        mock_table = MagicMock()
-        mock_supabase.table.return_value = mock_table
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
 
-        # Вызываем verify_magic_link
-        result = verify_magic_link("test-token-123", session_state, mock_supabase)
+        from app.auth.supabase_auth import verify_magic_link
+        result = verify_magic_link("test-token-123")
 
         # Верификация должна вернуть user_dict
         assert result is not None
         assert result["email"] == "user@example.com"
 
         # health_ping НЕ должен быть вызван внутри verify_magic_link (Section 11)
-        mock_supabase.table.assert_not_called()
+        health_ping_calls = [
+            str(c) for c in mock_supabase.table.call_args_list
+            if "health_ping" in str(c)
+        ]
+        assert len(health_ping_calls) == 0, (
+            "Section 11: keep_alive_if_needed() НЕ должна вызываться "
+            "внутри verify_magic_link()"
+        )
 
-    def test_keep_alive_called_after_verify_not_inside(self):
+    def test_keep_alive_called_after_verify_not_inside(self, mocker):
         """
         Правильный порядок вызовов (auth_callback.py):
-          1. result = verify_magic_link(token, ...)
-          2. if result: keep_alive_if_needed(email, ...)
+          1. result = verify_magic_link(token)
+          2. if result: keep_alive_if_needed(email)
 
-        Оба вызова происходят последовательно, keepalive — ПОСЛЕ verify.
+        Section 11: keepalive вызывается ПОСЛЕ verify, не внутри.
         """
-        session_state = {}
-
-        mock_supabase = MagicMock()
-
-        # Настраиваем успешный verify_otp
+        # Мок успешного verify_otp
         mock_user = MagicMock()
         mock_user.email = "user@example.com"
         mock_user.id = "abc-123"
         mock_auth_response = MagicMock()
         mock_auth_response.user = mock_user
+
+        mock_supabase = MagicMock()
         mock_supabase.auth.verify_otp.return_value = mock_auth_response
 
-        # Отдельный Supabase клиент для keepalive (проверяем изоляцию)
-        mock_keepalive_supabase = MagicMock()
+        # Отдельный мок для health_ping (keepalive)
         mock_table = MagicMock()
-        mock_keepalive_supabase.table.return_value = mock_table
+        mock_supabase.table.return_value = mock_table
         mock_table.insert.return_value = mock_table
         mock_table.execute.return_value = MagicMock()
 
+        fake_state = {}
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+
+        from app.auth.supabase_auth import verify_magic_link, keep_alive_if_needed
+
+        # Эмулируем auth_callback.py — правильный порядок
         call_order = []
 
-        # Эмулируем auth_callback.py
-        result = verify_magic_link("test-token", session_state, mock_supabase)
+        result = verify_magic_link("test-token")
         call_order.append("verify_magic_link")
 
         if result:
-            keep_alive_if_needed(result["email"], session_state, mock_keepalive_supabase)
+            keep_alive_if_needed(result["email"])
             call_order.append("keep_alive_if_needed")
 
         # Правильный порядок: сначала verify, потом keepalive
         assert call_order == ["verify_magic_link", "keep_alive_if_needed"]
 
-        # keepalive выполнил ping
-        mock_keepalive_supabase.table.assert_called_once_with("health_ping")
+        # keepalive выполнил ping в health_ping
+        mock_supabase.table.assert_called_with("health_ping")
 
         # last_keepalive_date установлен
-        assert session_state.get("last_keepalive_date") == date.today()
+        assert fake_state.get("last_keepalive_date") == date.today()
 
-    def test_verify_magic_link_failure_does_not_trigger_keepalive(self):
+    def test_verify_magic_link_failure_does_not_trigger_keepalive(self, mocker):
         """
-        Если verify_magic_link возвращает None (неуспешно) →
-        keep_alive_if_needed НЕ должна вызываться (условие: if result:).
+        Если verify_magic_link возвращает None →
+        keep_alive_if_needed НЕ вызывается (условие: if result:).
         """
-        session_state = {}
-
-        mock_supabase = MagicMock()
         # verify_otp возвращает ответ без пользователя
         mock_auth_response = MagicMock()
         mock_auth_response.user = None
+
+        mock_supabase = MagicMock()
         mock_supabase.auth.verify_otp.return_value = mock_auth_response
 
-        mock_keepalive_supabase = MagicMock()
+        fake_state = {}
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
 
-        result = verify_magic_link("bad-token", session_state, mock_supabase)
+        from app.auth.supabase_auth import verify_magic_link, keep_alive_if_needed
+
+        result = verify_magic_link("bad-token")
 
         # result == None → keepalive не вызывается
         if result:
-            keep_alive_if_needed(result["email"], session_state, mock_keepalive_supabase)
+            keep_alive_if_needed(result["email"])
 
         assert result is None
-        mock_keepalive_supabase.table.assert_not_called()
-        assert "last_keepalive_date" not in session_state
+        # health_ping не должен быть вызван
+        health_ping_calls = [
+            str(c) for c in mock_supabase.table.call_args_list
+            if "health_ping" in str(c)
+        ]
+        assert len(health_ping_calls) == 0
+        assert "last_keepalive_date" not in fake_state
 
 
 # ===========================================================================
@@ -522,14 +523,14 @@ class TestKeepAliveNotInsideVerifyMagicLink:
 # ===========================================================================
 class TestSessionStateStructure:
     """
-    Проверяем, что session_state содержит все ключи, описанные в Section 14.
+    Проверяем типы ключей session_state согласно Section 14.
     """
 
-    def test_last_keepalive_date_is_date_type(self):
+    def test_last_keepalive_date_is_date_type(self, mocker):
         """
         last_keepalive_date должен быть типа date, не datetime или str (Section 14).
         """
-        session_state = {}
+        fake_state = {}
 
         mock_supabase = MagicMock()
         mock_table = MagicMock()
@@ -537,13 +538,17 @@ class TestSessionStateStructure:
         mock_table.insert.return_value = mock_table
         mock_table.execute.return_value = MagicMock()
 
-        keep_alive_if_needed("user@example.com", session_state, mock_supabase)
+        mocker.patch("app.auth.supabase_auth.st.session_state", fake_state)
+        mocker.patch("app.auth.supabase_auth.supabase", mock_supabase)
 
-        stored_date = session_state.get("last_keepalive_date")
+        from app.auth.supabase_auth import keep_alive_if_needed
+        keep_alive_if_needed("user@example.com")
+
+        stored_date = fake_state.get("last_keepalive_date")
         assert isinstance(stored_date, date), (
             f"last_keepalive_date должен быть типа date, получен {type(stored_date)}"
         )
-        # И не datetime (datetime является подклассом date — проверяем явно)
+        # datetime является подклассом date — проверяем явно
         assert not isinstance(stored_date, datetime), (
             "last_keepalive_date не должен быть datetime, только date (Section 14)"
         )

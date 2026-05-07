@@ -50,14 +50,9 @@ CLEANER_FILE = os.path.join("core", "cleaner.py")
 # Любое имя, начинающееся с 'df', считается датафреймом
 DF_NAME_PREFIX = "df"
 
-# Методы DataFrame, которые мутируют объект при inplace=True (Section 9)
-INPLACE_MUTABLE_METHODS = frozenset({
-    "drop", "dropna", "fillna", "rename", "reset_index",
-    "set_index", "sort_values", "sort_index", "update",
-    "replace", "insert", "pop", "eval", "astype",
-    "reindex", "rename_axis", "reorder_levels",
-    "swaplevel", "pivot", "explode",
-})
+# Примечание: visit_Call флагирует ВСЕ вызовы inplace=True на df-* переменных —
+# без фильтрации по конкретному списку методов. Это намеренно: спека (Section 17)
+# запрещает inplace-мутации полностью, независимо от имени метода.
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +253,7 @@ def _analyse_file(
     allow_subscript: bool = False,
 ) -> List[MutationViolation]:
     """
-    Разбирает файл через ast.parse() и запускает MutationViolation.
+    Разбирает файл через ast.parse() и запускает DataFrameMutationVisitor.
     Возвращает список нарушений.
 
     :param file_path: абсолютный путь к .py файлу

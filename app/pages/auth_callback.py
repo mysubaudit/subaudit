@@ -74,6 +74,10 @@ def _init_session_defaults() -> None:
         # Дебаунс-флаги экспорта (Section 14)
         "pdf_generating": False,
         "excel_generating": False,
+
+        # Кулдаун повторной отправки magic link (Section 11, Section 14)
+        # 0.0 означает "ещё не отправлялась" — кулдаун не активен
+        "magic_link_last_sent": 0.0,
     }
 
     for key, value in defaults.items():
@@ -92,12 +96,7 @@ def main() -> None:
     инициализирует сессию и перенаправляет пользователя.
     """
 
-    st.set_page_config(
-        page_title="SubAudit — Verifying login...",
-        page_icon="🔐",
-        layout="centered",
-    )
-
+    # set_page_config вызывается только один раз — дубль удалён (вызов дважды = краш Streamlit)
     st.set_page_config(
         page_title="SubAudit — Verifying login...",
         page_icon="🔐",
@@ -193,8 +192,9 @@ def main() -> None:
     # Шаг 5: Проверка подписки — Checkpoint 1 (Section 13)
     # "Always st.spinner('Verifying subscription...') — never silent"
     # -------------------------------------------------------------------
-    with st.spinner("Verifying subscription..."):
-        plan: str = get_subscription_status(user_email)
+    # Checkpoint 1 (Section 13) — spinner уже внутри get_subscription_status() в lemon_squeezy.py
+    # Дополнительная обёртка st.spinner() здесь создаёт двойной спиннер — убрана
+    plan: str = get_subscription_status(user_email)
 
     # Записываем план в сессию (Section 14: user_plan)
     st.session_state["user_plan"] = plan
@@ -251,6 +251,6 @@ def main() -> None:
 # Точка входа
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__" or True:
-    # Streamlit запускает файл напрямую — вызываем main()
-    main()
+# Streamlit запускает файл напрямую как страницу — вызываем main() безусловно.
+# НЕ используем if __name__ == "__main__": — Streamlit не запускает страницы через __main__.
+main()

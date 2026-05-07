@@ -395,6 +395,24 @@ def _render_sidebar_nav() -> None:
             )
             st.caption(f"Signed in as: {masked}")
 
+        # ── Управление подпиской (заглушка — URL появится после Lemon Squeezy) ─
+        # Кнопка видна только залогиненным платным пользователям
+        if user_logged_in and plan in ("starter", "pro"):
+            st.markdown(
+                "[⚙️ Manage Subscription](#)",  # TODO: заменить # на реальный Customer Portal URL после одобрения Lemon Squeezy
+                unsafe_allow_html=False,
+            )
+            st.markdown("---")
+
+        # ── Обратная связь / контакт ─────────────────────────────────────────
+        # Email для жалоб, предложений, отзывов — Section 4 (поддержка пользователей)
+        st.markdown("**Questions or feedback?**")
+        st.markdown(
+            "📧 [biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)",
+            unsafe_allow_html=False,
+        )
+        st.markdown("---")
+
         st.caption("SubAudit v2.9")
 
 

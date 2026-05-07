@@ -256,20 +256,10 @@ def _get_reactivated_customer_ids(df: pd.DataFrame, arpu: float) -> set:
             continue
 
         # Annual detection: если max(amount) > 6 × ARPU → исключаем (Section 5).
-        # ARPU вычисляется по активным клиентам last_month БЕЗ текущего кандидата,
-        # чтобы крупный клиент не завышал порог и сам себя не «спасал».
+        # Используем переданный arpu напрямую — строго по спецификации.
         if arpu > 0:
             max_amount = cid_active["amount"].max()
-            last_month_active = active[active["_period"] == last_month]
-            others = last_month_active[last_month_active["customer_id"] != cid]
-            if not others.empty:
-                arpu_excl = float(
-                    others.groupby("customer_id")["amount"].sum().mean()
-                )
-            else:
-                arpu_excl = arpu
-            threshold_arpu = arpu_excl if arpu_excl > 0 else arpu
-            if max_amount > 6 * threshold_arpu:
+            if max_amount > 6 * arpu:
                 continue
 
         reactivated.add(cid)
@@ -518,12 +508,10 @@ def calculate_nrr(df: pd.DataFrame) -> float | None:
     raw_nrr = ((mrr_last - revenue_churn + expansion_mrr) / mrr_prev) * 100
     nrr = float(np.clip(raw_nrr, 0.0, 999.0))
 
-    # Предупреждение при NRR > 200% — Section 6
-    if nrr > 200:
-        st.warning(
-            "NRR exceeds 200% — likely caused by limited prior-month data. "
-            "Interpret with caution."
-        )
+    # Предупреждение при NRR > 200% выводится в 5_dashboard.py,
+    # а НЕ здесь — потому что calculate_nrr() вызывается внутри
+    # get_all_metrics() с @st.cache_data: при cache hit функция не
+    # выполняется → st.warning() никогда бы не показался. (Section 6)
 
     return nrr
 

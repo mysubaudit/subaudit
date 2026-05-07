@@ -10,7 +10,6 @@ Development Order Step 3: core/cleaner.py + 4_cleaning.py (threading.Timer timeo
 """
 
 import pandas as pd
-import numpy as np
 from charset_normalizer import from_bytes
 import streamlit as st
 from typing import Tuple
@@ -142,8 +141,8 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
             cleaning_report["multicurrency_error"] = True
             # Блокируем обработку — показываем ошибку и бросаем исключение
             st.error(
-                f"Обнаружено несколько валют: {', '.join(str(c) for c in unique_currencies)}. "
-                "Загрузите файл с единой валютой. Смешивание валют не допускается."
+                f"Multiple currencies detected: {', '.join(str(c) for c in unique_currencies)}. "
+                "Please upload a file with a single currency. Mixed currencies are not supported."
             )
             raise ValueError(
                 f"Mixed currency error: currencies detected: {unique_currencies}. "
@@ -242,8 +241,8 @@ def read_csv_with_encoding(file_bytes: bytes) -> pd.DataFrame:
     # Section 3: «On latin-1: show st.warning() — characters may render incorrectly»
     if latin1_warning:
         st.warning(
-            "Кодировка файла определена как latin-1. "
-            "Некоторые символы могут отображаться некорректно."
+            "File encoding detected as latin-1. "
+            "Some characters may not render correctly."
         )
 
     try:

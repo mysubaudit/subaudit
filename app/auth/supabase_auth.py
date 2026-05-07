@@ -13,7 +13,6 @@ SubAudit — Master Specification Sheet v2.9
 
 from __future__ import annotations
 
-import os
 from datetime import date, datetime, timezone
 
 import streamlit as st
@@ -65,10 +64,10 @@ def send_magic_link(email: str) -> bool:
         client: Client = _get_supabase_client()
         # Supabase GoTrue: signInWithOtp отправляет magic link на email
         client.auth.sign_in_with_otp({"email": email})
-        log_info("magic_link_sent", {"email": email})
+        log_info("magic_link_sent", extra={"email": email})
         return True
     except Exception as exc:
-        log_error("send_magic_link_failed", exc, {"email": email})
+        log_error("send_magic_link_failed", exc=exc, extra={"email": email})
         return False
 
 
@@ -102,15 +101,15 @@ def verify_magic_link(token: str) -> dict | None:
                 "id": response.user.id,
                 "user_metadata": response.user.user_metadata,
             }
-            log_info("verify_magic_link_success", {"email": response.user.email})
+            log_info("verify_magic_link_success", extra={"email": response.user.email})
             return user_dict
 
         # Supabase вернул ответ без пользователя — токен невалиден
-        log_warning("verify_magic_link_no_user", {"token_prefix": token[:8]})
+        log_warning("verify_magic_link_no_user", extra={"token_prefix": token[:8]})
         return None
 
     except Exception as exc:
-        log_error("verify_magic_link_failed", exc, {"token_prefix": token[:8]})
+        log_error("verify_magic_link_failed", exc=exc, extra={"token_prefix": token[:8]})
         return None
 
 
@@ -148,13 +147,13 @@ def get_user_plan(user_email: str) -> str:
 
         # Валидация: допустимы только три значения (Section 2 — Pricing Plans)
         if plan not in ("free", "starter", "pro"):
-            log_warning("get_user_plan_invalid_value", {"email": user_email, "plan": plan})
+            log_warning("get_user_plan_invalid_value", extra={"email": user_email, "plan": plan})
             return "free"
 
         return plan
 
     except Exception as exc:
-        log_error("get_user_plan_failed", exc, {"email": user_email})
+        log_error("get_user_plan_failed", exc=exc, extra={"email": user_email})
         # Безопасный fallback — 'free' (Section 13 аналогичная логика для LS)
         return "free"
 
@@ -214,12 +213,12 @@ def keep_alive_if_needed(user_email: str) -> None:
         # Обновляем дату последнего keepalive в session_state
         st.session_state["last_keepalive_date"] = today
 
-        log_info("keep_alive_ping_success", {"email": user_email, "date": str(today)})
+        log_info("keep_alive_ping_success", extra={"email": user_email, "date": str(today)})
 
     except Exception as exc:
         # Section 11: ошибка keepalive не является пользовательской — только логируем
         log_warning(
             "keep_alive_ping_failed",
-            {"email": user_email, "error": str(exc)},
+            extra={"email": user_email, "error": str(exc)},
         )
         # НЕ raise, НЕ показывать st.error() — пользователь не должен видеть это

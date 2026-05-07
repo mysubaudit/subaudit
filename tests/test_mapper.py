@@ -17,7 +17,6 @@ test_mapper.py
 """
 
 import pytest
-from unittest.mock import patch
 
 # Импорт тестируемого модуля (Section 4: app/core/mapper.py)
 from app.core.mapper import auto_map_columns
@@ -318,6 +317,26 @@ class TestColumnSanitization:
     Section 17: test_column_sanitization
     Нормализация входных колонок перед fuzzy-matching через rapidfuzz.
     """
+
+    def test_column_sanitization(self):
+        """
+        Сводный тест санитизации — обязательное имя из Section 17 Test Matrix.
+        Проверяет полный цикл: strip + lowercase + нормализация пробелов/регистра
+        при реальном наборе грязных колонок.
+        Section 17: test_column_sanitization.
+        """
+        # Грязные заголовки: лишние пробелы, смешанный регистр, пробел внутри
+        columns = [" Customer_Id ", "AMOUNT", "Status ", " currency", "billing date"]
+        result = auto_map_columns(columns)
+        assert result.get("customer_id") is not None, (
+            "Санитизация: ' Customer_Id ' должен маппиться в 'customer_id'."
+        )
+        assert result.get("amount") is not None, (
+            "Санитизация: 'AMOUNT' должен маппиться в 'amount'."
+        )
+        assert result.get("date") is not None, (
+            "Санитизация: 'billing date' должен маппиться в 'date'."
+        )
 
     def test_column_with_leading_trailing_whitespace(self):
         """

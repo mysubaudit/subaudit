@@ -226,11 +226,12 @@ class TestThreeToFiveMonths:
                 "(Section 10)"
             )
 
-    def test_export_gate_blocks_under_6mo(self, df_5mo):
+    def test_export_gate_blocks_under_6mo_3_5mo_range(self, df_5mo):
         """
-        При data_months_used < 6 экспорт должен быть заблокирован.
+        При data_months_used < 6 экспорт должен быть заблокирован (3–5 мес. диапазон).
         Section 10: "Export gate: forecast_dict = None when data_months_used < 6."
         Section 17: test_export_gate_blocks_under_6mo.
+        Переименован во избежание дублирования с TestExportGate.test_export_gate_blocks_under_6mo.
         """
         result = generate_forecast(df_5mo)
         # forecast_dict должен быть None ИЛИ содержать маркер экспортного блока
@@ -495,10 +496,8 @@ class TestHoltWintersExceptionHandling:
 
             generate_forecast(df_degenerate)
 
-        mock_st.warning.assert_called_with(expected_warning), (
-            "Текст st.warning при ValueError должен точно соответствовать "
-            "спецификации (Section 10, Section 1 v2.9)"
-        )
+            # assert ВНУТРИ with-блока — mock_st активен (Section 10, Section 1 v2.9)
+            mock_st.warning.assert_called_with(expected_warning)
 
     def test_holtwinters_linalg_error_returns_none(self, df_degenerate):
         """
@@ -544,10 +543,8 @@ class TestHoltWintersExceptionHandling:
 
             generate_forecast(df_degenerate)
 
-        mock_st.warning.assert_called_with(expected_warning), (
-            "Текст st.warning при LinAlgError должен точно соответствовать "
-            "спецификации (Section 10)"
-        )
+            # assert ВНУТРИ with-блока — mock_st активен (Section 10)
+            mock_st.warning.assert_called_with(expected_warning)
 
     def test_holtwinters_exception_does_not_propagate(self, df_degenerate):
         """

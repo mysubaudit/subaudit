@@ -155,7 +155,7 @@ def sample_new_customers() -> pd.DataFrame:
         {"customer_id": "cust_003", "date": "2024-11-01", "amount": 100.0, "status": "active", "currency": "USD"},
         {"customer_id": "cust_004", "date": "2024-11-01", "amount": 100.0, "status": "active", "currency": "USD"},
         {"customer_id": "cust_005", "date": "2024-11-01", "amount": 100.0, "status": "active", "currency": "USD"},
-        # декабрь — cust_004 новый клиент впервые
+        # декабрь — cust_004 существующий клиент (был в ноябре); только cust_new — новый
         {"customer_id": "cust_001", "date": "2024-12-01", "amount": 100.0, "status": "active", "currency": "USD"},
         {"customer_id": "cust_002", "date": "2024-12-01", "amount": 100.0, "status": "active", "currency": "USD"},
         {"customer_id": "cust_003", "date": "2024-12-01", "amount": 100.0, "status": "active", "currency": "USD"},
@@ -845,10 +845,13 @@ class TestNRR:
         При NRR > 200 функция должна вызывать st.warning() (Section 6).
         Проверяем вызов через mock.
         """
-        with patch("streamlit.warning") as mock_warn:
+        # Патчим st в контексте metrics.py — именно там происходит вызов st.warning()
+        # patch("streamlit.warning") не перехватит вызов через «import streamlit as st»
+        with patch("app.core.metrics.st") as mock_st:
             nrr = calculate_nrr(sample_nrr_high)
             if nrr is not None and nrr > 200:
-                mock_warn.assert_called_once()
+                # assert_called() — Section 6 не гарантирует ровно один вызов
+                mock_st.warning.assert_called()
 
 
 # ===========================================================================
