@@ -26,15 +26,66 @@ COOLDOWN = 60  # секунды — НЕ связано с логикой keepal
 def _require_login() -> bool:
     """
     Проверяем, авторизован ли пользователь.
-    Если нет — показываем заглушку и останавливаем выполнение.
-    Section 14: user_email хранится в session_state.
+    Если нет — показываем полную форму входа (email + кнопка "Send magic link")
+    с кулдауном COOLDOWN=60 секунд (Section 11, Section 12).
+    После отправки ссылки останавливаем рендер страницы через st.stop().
+    Section 14: user_email и magic_link_last_sent хранятся в session_state.
     Текст на английском — пользователь видит этот экран.
     """
-    if not st.session_state.get("user_email"):
-        st.warning("You are not signed in. Please log in using a magic link.")
-        st.stop()
-        return False
-    return True
+    if st.session_state.get("user_email"):
+        return True  # Пользователь уже авторизован — продолжаем рендер
+
+    # ── Форма входа ──────────────────────────────────────────────────────────
+    st.info("🔐 Sign in to access your account. We'll send you a magic link — no password needed.")
+
+    email_input = st.text_input(
+        "Your email address",
+        placeholder="you@example.com",
+        key="login_email_input",
+    )
+
+    # Вычисляем, сколько секунд прошло с последней отправки (Section 14)
+    seconds_since = None
+    last_sent = st.session_state.get("magic_link_last_sent")
+    if last_sent is not None:
+        seconds_since = time.time() - last_sent
+
+    # Кулдаун ещё не истёк — блокируем кнопку и показываем таймер (Section 11)
+    if seconds_since is not None and seconds_since < COOLDOWN:
+        remaining = int(COOLDOWN - seconds_since)
+        st.info(f"⏳ You can re-send in {remaining} second(s). (Cooldown: {COOLDOWN}s)")
+        st.button(
+            "Send magic link",
+            disabled=True,
+            help=f"Please wait {remaining} second(s) before re-sending.",
+            key="login_send_btn",
+        )
+    else:
+        # Кулдаун истёк или ссылка ещё не отправлялась
+        if st.button("Send magic link", key="login_send_btn"):
+            if not email_input or "@" not in email_input:
+                st.error("❌ Please enter a valid email address.")
+            else:
+                success = send_magic_link(email_input.strip())
+                if success:
+                    # Фиксируем время отправки — Unix timestamp (Section 14)
+                    st.session_state["magic_link_last_sent"] = time.time()
+                    st.success(
+                        f"✅ Magic link sent to **{email_input.strip()}**. "
+                        "Please check your inbox and click the link to sign in."
+                    )
+                    log_info(f"[7_account] Magic link sent from login form: {email_input.strip()}")
+                else:
+                    st.error(
+                        "❌ Failed to send magic link. "
+                        "Please try again later or contact support."
+                    )
+                    log_warning(f"[7_account] Failed to send magic link from login form: {email_input.strip()}")
+
+    # Останавливаем рендер — остальная часть страницы не показывается
+    # до тех пор, пока пользователь не авторизован (Section 14: user_email)
+    st.stop()
+    return False
 
 
 def _get_seconds_since_last_sent() -> float | None:
