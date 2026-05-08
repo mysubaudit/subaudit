@@ -1,20 +1,18 @@
 """
 app/pages/1_landing.py
 Маркетинговая (лендинговая) страница SubAudit.
+Spec v2.9 — Section 4, 16, 2
 
-Спецификация: Section 4 (File Structure), Section 16 (Development Order, Step 1),
-Section 2 (Pricing Plans).
-
-Раздел 4: "Landing / marketing page"
-Раздел 16, шаг 1: "main.py + 1_landing.py + 2_upload.py"
+CHANGELOG:
+- #pricing якоря → /pricing (реальная страница)
+- Nav "Pricing" → /pricing
+- Footer "Pricing" → /pricing  
+- Hero "View pricing" → /pricing
+- Account кнопка в nav bar
 """
 
 import streamlit as st
 
-# ---------------------------------------------------------------------------
-# Конфигурация страницы
-# Section 4: 1_landing.py — точка входа для маркетинговой страницы
-# ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="SubAudit — Subscription Analytics",
     page_icon="📊",
@@ -22,16 +20,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ---------------------------------------------------------------------------
-# Глобальные стили — кастомный CSS для полноценного маркетингового лендинга
-# Применяем refined, editorial эстетику: тёмный фон, акцент #4F8EF7, типографика
-# ---------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
-/* --- Импорт шрифтов --- */
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-/* --- Сброс и базовые переменные --- */
 :root {
     --bg-primary:   #0D1117;
     --bg-card:      #161B22;
@@ -50,23 +42,90 @@ CUSTOM_CSS = """
     --radius-lg:    20px;
 }
 
-/* --- Скрываем стандартный Streamlit chrome --- */
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding: 0 !important; max-width: 100% !important; }
+[data-testid="stSidebar"]        { display: none !important; }
+[data-testid="collapsedControl"] { display: none !important; }
+[data-testid="stSidebarNav"]     { display: none !important; }
 
-/* Скрываем весь сайдбар и кнопку-гамбургер ► (без этого кнопка видна даже при collapsed) */
-[data-testid="stSidebar"]         { display: none !important; }
-[data-testid="collapsedControl"]   { display: none !important; }
-[data-testid="stSidebarNav"]       { display: none !important; }
-
-/* --- Базовый фон --- */
 .stApp {
     background: var(--bg-primary) !important;
     font-family: 'DM Sans', sans-serif;
     color: var(--text-primary);
 }
 
-/* --- HERO секция --- */
+/* ── TOP NAV ── */
+.top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: rgba(13, 17, 23, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+.nav-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--text-primary);
+    text-decoration: none !important;
+    letter-spacing: -0.01em;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.nav-link {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted) !important;
+    text-decoration: none !important;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.nav-link:hover {
+    color: var(--text-primary) !important;
+    background: rgba(255,255,255,0.05);
+}
+.nav-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent) !important;
+    text-decoration: none !important;
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-accent);
+    background: var(--accent-soft);
+    transition: background 0.15s, filter 0.15s;
+    margin-left: 8px;
+}
+.nav-btn:hover {
+    background: rgba(79, 142, 247, 0.22);
+    filter: brightness(1.1);
+}
+.nav-btn-primary {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff !important;
+    text-decoration: none !important;
+    padding: 7px 16px;
+    border-radius: 6px;
+    background: var(--accent);
+    border: 1px solid transparent;
+    transition: filter 0.15s;
+    margin-left: 4px;
+}
+.nav-btn-primary:hover { filter: brightness(1.12); }
+
+/* ── HERO ── */
 .hero-section {
     background: radial-gradient(ellipse 80% 50% at 50% -20%,
                 rgba(79, 142, 247, 0.18) 0%, transparent 65%),
@@ -82,18 +141,10 @@ CUSTOM_CSS = """
     position: absolute;
     inset: 0;
     background:
-        repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 79px,
-            rgba(255,255,255,0.022) 80px
-        ),
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 79px,
-            rgba(255,255,255,0.022) 80px
-        );
+        repeating-linear-gradient(90deg, transparent, transparent 79px,
+            rgba(255,255,255,0.022) 80px),
+        repeating-linear-gradient(0deg, transparent, transparent 79px,
+            rgba(255,255,255,0.022) 80px);
     pointer-events: none;
 }
 .hero-badge {
@@ -118,10 +169,7 @@ CUSTOM_CSS = """
     margin: 0 0 20px;
     letter-spacing: -0.02em;
 }
-.hero-title em {
-    font-style: italic;
-    color: var(--accent);
-}
+.hero-title em { font-style: italic; color: var(--accent); }
 .hero-subtitle {
     font-size: clamp(16px, 1.8vw, 20px);
     color: var(--text-muted);
@@ -147,9 +195,6 @@ CUSTOM_CSS = """
     border-radius: 8px;
     text-decoration: none !important;
     transition: filter 0.18s, transform 0.18s;
-    cursor: pointer;
-    border: none;
-    letter-spacing: 0.01em;
 }
 .btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .btn-secondary {
@@ -163,14 +208,9 @@ CUSTOM_CSS = """
     border: 1px solid var(--border);
     text-decoration: none !important;
     transition: border-color 0.18s, background 0.18s;
-    cursor: pointer;
 }
-.btn-secondary:hover {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-}
+.btn-secondary:hover { border-color: var(--accent); background: var(--accent-soft); }
 
-/* --- Статистика Hero --- */
 .hero-stats {
     display: flex;
     justify-content: center;
@@ -186,13 +226,9 @@ CUSTOM_CSS = """
     color: var(--text-primary);
     line-height: 1.1;
 }
-.stat-label {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 4px;
-}
+.stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
-/* --- Секция Features --- */
+/* ── SECTIONS ── */
 .section {
     padding: 80px 5%;
     max-width: 1200px;
@@ -224,7 +260,7 @@ CUSTOM_CSS = """
     margin-bottom: 48px;
 }
 
-/* --- Feature cards сетка --- */
+/* ── FEATURE GRID ── */
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -241,31 +277,13 @@ CUSTOM_CSS = """
     border-color: var(--border-accent);
     box-shadow: 0 0 24px var(--accent-glow);
 }
-.feature-icon {
-    font-size: 28px;
-    margin-bottom: 16px;
-    display: block;
-}
-.feature-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-}
-.feature-desc {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.65;
-}
+.feature-icon { font-size: 28px; margin-bottom: 16px; display: block; }
+.feature-name { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
 
-/* --- Divider --- */
-.divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 0;
-}
+.divider { border: none; border-top: 1px solid var(--border); margin: 0; }
 
-/* --- Pricing Cards (Section 2) --- */
+/* ── PRICING ── */
 .pricing-wrapper {
     background: var(--bg-card);
     border-top: 1px solid var(--border);
@@ -329,12 +347,7 @@ CUSTOM_CSS = """
     color: var(--text-muted);
     vertical-align: baseline;
 }
-.plan-tagline {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-bottom: 28px;
-    line-height: 1.5;
-}
+.plan-tagline { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.5; }
 .plan-features {
     list-style: none;
     padding: 0;
@@ -351,17 +364,8 @@ CUSTOM_CSS = """
     gap: 10px;
     line-height: 1.5;
 }
-.plan-features li .check {
-    color: var(--success);
-    font-size: 14px;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-.plan-features li .cross {
-    color: var(--text-caption);
-    flex-shrink: 0;
-    margin-top: 1px;
-}
+.plan-features li .check { color: var(--success); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.plan-features li .cross { color: var(--text-caption); flex-shrink: 0; margin-top: 1px; }
 .plan-cta {
     display: block;
     text-align: center;
@@ -373,21 +377,12 @@ CUSTOM_CSS = """
     cursor: pointer;
     transition: all 0.18s;
 }
-.plan-cta.primary {
-    background: var(--accent);
-    color: #fff !important;
-}
+.plan-cta.primary { background: var(--accent); color: #fff !important; }
 .plan-cta.primary:hover { filter: brightness(1.1); }
-.plan-cta.outline {
-    border: 1px solid var(--border);
-    color: var(--text-primary) !important;
-}
-.plan-cta.outline:hover {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-}
+.plan-cta.outline { border: 1px solid var(--border); color: var(--text-primary) !important; }
+.plan-cta.outline:hover { border-color: var(--accent); background: var(--accent-soft); }
 
-/* --- Notice privacy --- */
+/* ── PRIVACY ── */
 .privacy-notice {
     background: var(--accent-soft);
     border: 1px solid var(--border-accent);
@@ -403,7 +398,7 @@ CUSTOM_CSS = """
 }
 .privacy-notice .icon { font-size: 18px; flex-shrink: 0; }
 
-/* --- Security/Trust bar --- */
+/* ── TRUST BAR ── */
 .trust-bar {
     background: var(--bg-card-alt);
     border-top: 1px solid var(--border);
@@ -429,7 +424,7 @@ CUSTOM_CSS = """
 }
 .trust-item .ti { font-size: 16px; }
 
-/* --- Footer --- */
+/* ── FOOTER ── */
 .landing-footer {
     background: var(--bg-primary);
     border-top: 1px solid var(--border);
@@ -439,7 +434,7 @@ CUSTOM_CSS = """
     color: var(--text-caption);
 }
 
-/* --- Streamlit кнопки переопределение --- */
+/* ── STREAMLIT BUTTON ── */
 div[data-testid="stButton"] > button {
     background: var(--accent) !important;
     color: white !important;
@@ -452,19 +447,31 @@ div[data-testid="stButton"] > button {
     transition: filter 0.18s !important;
     width: 100%;
 }
-div[data-testid="stButton"] > button:hover {
-    filter: brightness(1.12) !important;
-}
+div[data-testid="stButton"] > button:hover { filter: brightness(1.12) !important; }
 </style>
 """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# ── NAV ──────────────────────────────────────────────────────────────────────
+# Проблема 3: Account кнопка в шапке
+# Все ссылки ведут на реальные страницы, НЕТ якорей #pricing
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+<nav class="top-nav">
+    <a class="nav-logo" href="/" target="_self">Sub<span>Audit</span></a>
+    <div class="nav-links">
+        <a class="nav-link" href="/upload"  target="_self">Upload</a>
+        <a class="nav-link" href="/pricing" target="_self">Pricing</a>
+        <a class="nav-btn"  href="/account" target="_self">⚙ Account</a>
+        <a class="nav-btn-primary" href="/upload" target="_self">Get started →</a>
+    </div>
+</nav>
+""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# HERO секция
-# Section 16 Step 1: 1_landing.py — маркетинговая страница
-# ---------------------------------------------------------------------------
+# ── HERO ─────────────────────────────────────────────────────────────────────
+# FIX: "View pricing" → /pricing (не #pricing)
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero-section">
     <div class="hero-badge">📊 Subscription Analytics — Powered by your own CSV</div>
@@ -480,8 +487,8 @@ st.markdown("""
         <a class="btn-primary" href="/upload" target="_self">
             → &nbsp;Analyse my data — it's free
         </a>
-        <a class="btn-secondary" href="#pricing">
-            View pricing
+        <a class="btn-secondary" href="/pricing" target="_self">
+            View pricing ↓
         </a>
     </div>
     <div class="hero-stats">
@@ -505,12 +512,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------------------------------
-# Секция: Возможности продукта
-# Section 6 (Metric Formulas), Section 7 (Cohort), Section 10 (Forecast),
-# Section 11 (Simulation) — маркетинговое представление функций
-# ---------------------------------------------------------------------------
+# ── FEATURES ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="section">
     <div class="section-tag">Everything you need</div>
@@ -534,7 +536,7 @@ st.markdown("""
             <div class="feature-name">Block 2 — Growth</div>
             <div class="feature-desc">
                 New MRR, Reactivation MRR, Growth Rate, New Subscribers.
-                Reactivated customers tracked separately from new — no metric inflation.
+                Reactivated customers tracked separately — no metric inflation.
             </div>
         </div>
         <div class="feature-card">
@@ -558,12 +560,12 @@ st.markdown("""
             <div class="feature-name">Block 5 — Cohort Analysis</div>
             <div class="feature-desc">
                 Up to 12 rolling monthly cohorts with RdYlGn heatmap.
-                Correct SaaS semantics: paused accounts count as retained.
+                Paused accounts count as retained — correct SaaS semantics.
             </div>
         </div>
         <div class="feature-card">
             <span class="feature-icon">🔮</span>
-            <div class="feature-name">Forecast & Simulation</div>
+            <div class="feature-name">Forecast &amp; Simulation</div>
             <div class="feature-desc">
                 Holt-Winters 12-month forecast with pessimistic / realistic /
                 optimistic scenarios. PRO: churn-reduction &amp; price-increase simulator.
@@ -575,12 +577,7 @@ st.markdown("""
 
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Секция: Приватность и безопасность файлов
-# Section 3 (ℹ notice): "Files are processed in-memory and NEVER stored
-#   or sent to third parties." — обязательная формулировка на Upload page,
-#   здесь дополнительно используется в маркетинговом контексте
-# ---------------------------------------------------------------------------
+# ── PRIVACY ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="section">
     <div class="section-tag">Privacy first</div>
@@ -602,13 +599,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------------------------------
-# Секция: Ценообразование
-# Section 2 — Pricing Plans: FREE / STARTER $19/mo / PRO $49/mo
-# Все значения таблицы взяты строго из спецификации (Section 2)
-# ---------------------------------------------------------------------------
-st.markdown('<div id="pricing"></div>', unsafe_allow_html=True)
+# ── PRICING PREVIEW ───────────────────────────────────────────────────────────
+# Секция pricing на лендинге — краткий preview с CTA на /pricing
+# Карточки здесь показывают ключевые отличия, детали — на /pricing
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="pricing-wrapper">
 <div class="pricing-inner">
@@ -643,7 +637,7 @@ st.markdown("""
             </a>
         </div>
 
-        <!-- STARTER — featured -->
+        <!-- STARTER -->
         <div class="pricing-card featured">
             <div class="pricing-badge">Most popular</div>
             <div class="plan-name">Starter</div>
@@ -683,14 +677,20 @@ st.markdown("""
         </div>
 
     </div>
+
+    <!-- CTA под карточками -->
+    <div style="text-align:center; margin-top: 40px;">
+        <a class="btn-secondary" href="/pricing" target="_self"
+           style="display:inline-block; padding: 12px 32px;">
+            See full pricing details →
+        </a>
+    </div>
+
 </div>
 </div>
 """, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------------------------------
-# Trust bar — краткие сигналы доверия
-# ---------------------------------------------------------------------------
+# ── TRUST BAR ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="trust-bar">
     <div class="trust-bar-inner">
@@ -703,12 +703,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------------------------------
-# CTA-секция перед footer
-# Кнопка Streamlit для навигации на страницу загрузки (2_upload.py)
-# Section 16 Step 1: 2_upload.py создаётся в том же шаге разработки
-# ---------------------------------------------------------------------------
+# ── CTA BOTTOM ────────────────────────────────────────────────────────────────
 st.markdown("<div style='height: 64px;'></div>", unsafe_allow_html=True)
 
 col_l, col_c, col_r = st.columns([2, 3, 2])
@@ -725,28 +720,223 @@ with col_c:
     </div>
     """, unsafe_allow_html=True)
 
-    # Streamlit-кнопка: навигация на страницу загрузки
     if st.button("→  Analyse my subscription data  —  it's free", key="cta_upload_bottom"):
-        # Section 4: 2_upload.py — страница загрузки CSV
         st.switch_page("pages/2_upload.py")
 
 st.markdown("<div style='height: 48px;'></div>", unsafe_allow_html=True)
 
+# ── LEGAL SECTION ─────────────────────────────────────────────────────────────
+# Terms of Service, Privacy Policy, Refund Policy
+# Требование Lemon Squeezy — обязательные документы на лендинге
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="section" style="padding-top: 48px; padding-bottom: 16px;">
+    <div style="text-align:center; margin-bottom: 24px;">
+        <span style="color: var(--text-caption); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">Legal</span>
+    </div>
+    <div style="display:flex; justify-content:center; gap: 24px; flex-wrap:wrap;">
+        <a href="#terms-of-service"   style="color: var(--accent); font-size: 14px; text-decoration:none;">Terms of Service</a>
+        <span style="color: var(--text-caption);">·</span>
+        <a href="#privacy-policy"     style="color: var(--accent); font-size: 14px; text-decoration:none;">Privacy Policy</a>
+        <span style="color: var(--text-caption);">·</span>
+        <a href="#refund-policy"      style="color: var(--accent); font-size: 14px; text-decoration:none;">Refund Policy</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Footer
-# ---------------------------------------------------------------------------
+# ── Terms of Service ──────────────────────────────────────────────────────────
+with st.expander("📄 Terms of Service", expanded=False):
+    st.markdown("""
+<div id="terms-of-service"></div>
+
+**Terms of Service**
+
+*Last updated: May 8, 2025*
+
+**1. Acceptance of Terms**
+
+By accessing or using SubAudit ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.
+
+**2. Description of Service**
+
+SubAudit is a web-based SaaS analytics tool that allows users to upload CSV files containing subscription data and receive computed metrics, forecasts, and exportable reports (PDF and Excel).
+
+**3. User Accounts**
+
+Access to paid features requires authentication via a magic link sent to your email address. You are responsible for maintaining the security of your email account. Sessions are not persistent across browser refreshes — this is a known limitation of the current version.
+
+**4. Subscription Plans and Billing**
+
+- **Free** plan: available without registration, limited to 1,000 rows per session.
+- **Starter** ($19/month) and **Pro** ($49/month) plans are billed as monthly recurring subscriptions through Lemon Squeezy.
+- Subscriptions renew automatically on the same day each month unless cancelled before the renewal date.
+- Plan features are enforced at the time of export. Downgrade mid-session may not be reflected until the next login.
+
+**5. Data Processing**
+
+All uploaded files are processed entirely in-memory within your browser session. No file is written to disk, stored in a database, or forwarded to any third-party service. All data is discarded when the session ends. See our Privacy Policy for full details.
+
+**6. Acceptable Use**
+
+You agree not to:
+- Upload data you do not have the legal right to process.
+- Attempt to reverse-engineer, scrape, or abuse the Service.
+- Use the Service to process data containing personal information of individuals without appropriate legal basis.
+
+**7. Intellectual Property**
+
+All software, design, and analytics logic of SubAudit are the intellectual property of the developer. You may not copy, redistribute, or resell the Service.
+
+**8. Limitation of Liability**
+
+SubAudit is provided "as is" without warranties of any kind, express or implied. Metrics and forecasts are mathematical computations based on your uploaded data. We are not responsible for business decisions made on the basis of these outputs. In no event shall SubAudit be liable for any indirect, incidental, special, or consequential damages.
+
+**9. Changes to Terms**
+
+We reserve the right to update these Terms at any time. Continued use of the Service after changes constitutes your acceptance of the updated Terms.
+
+**10. Governing Law**
+
+These Terms are governed by applicable international commercial law. Disputes shall be resolved through good-faith negotiation before any formal proceedings.
+
+**11. Contact**
+
+For questions regarding these Terms, contact us at: **biz.sardorbek@gmail.com**
+""", unsafe_allow_html=True)
+
+# ── Privacy Policy ────────────────────────────────────────────────────────────
+with st.expander("🔒 Privacy Policy", expanded=False):
+    st.markdown("""
+<div id="privacy-policy"></div>
+
+**Privacy Policy**
+
+*Last updated: May 8, 2025*
+
+**1. What We Collect**
+
+| Data | Why | Where stored |
+|------|-----|--------------|
+| Email address | Authentication via magic link | Supabase (auth only) |
+| Subscription plan | Feature gating | Supabase + session memory |
+| Company name (optional) | PDF branding for Pro users | Session memory only — never persisted |
+| Error events | Bug tracking and stability | Sentry (anonymised) |
+
+We do **not** collect names, phone numbers, payment card numbers, or any data from your uploaded CSV files.
+
+**2. Your CSV Data**
+
+Uploaded files are processed **entirely in-memory** within your active browser session. No file content is written to disk, stored in our database, or transmitted to any third party. Data is permanently discarded when your session ends. This is a core architectural guarantee, not a policy promise.
+
+**3. Authentication**
+
+We use Supabase to manage user accounts. When you request a magic link, your email address is stored in Supabase solely for authentication purposes. We do not store passwords.
+
+**4. Payments**
+
+Payments are handled by **Lemon Squeezy**. SubAudit never processes or stores payment card information. Lemon Squeezy's Privacy Policy applies to all payment transactions.
+
+**5. Error Tracking**
+
+We use **Sentry** for error monitoring. Events are anonymised — personally identifiable information (PII) is scrubbed before transmission. Sentry receives only error type, stack trace, and plan tier.
+
+**6. Cookies and Tracking**
+
+SubAudit does not use advertising cookies or tracking pixels. Streamlit Community Cloud may set technical session cookies required for the application to function.
+
+**7. Data Retention**
+
+- Email addresses: retained in Supabase until you request deletion.
+- Error events: retained by Sentry for 30 days.
+- CSV data: zero retention — discarded at session end.
+
+**8. Your Rights**
+
+You may request deletion of your account and email address at any time by contacting us. We will action deletion requests within 14 business days.
+
+**9. Third-Party Services**
+
+| Service | Purpose | Privacy Policy |
+|---------|---------|----------------|
+| Supabase | Authentication & database | supabase.com/privacy |
+| Lemon Squeezy | Payments & subscriptions | lemonsqueezy.com/privacy |
+| Sentry | Error monitoring | sentry.io/privacy |
+| Streamlit Community Cloud | Application hosting | streamlit.io/privacy |
+
+**10. Contact**
+
+For privacy-related requests or questions: **biz.sardorbek@gmail.com**
+""", unsafe_allow_html=True)
+
+# ── Refund Policy ─────────────────────────────────────────────────────────────
+with st.expander("💳 Refund Policy", expanded=False):
+    st.markdown("""
+<div id="refund-policy"></div>
+
+**Refund Policy**
+
+*Last updated: May 8, 2025*
+
+**Our Commitment**
+
+We want you to be satisfied with SubAudit. If the Service does not meet your expectations, we offer a straightforward refund process.
+
+**7-Day Money-Back Guarantee**
+
+If you are not satisfied with your Starter or Pro subscription, you may request a full refund within **7 days** of your initial purchase. No questions asked.
+
+To request a refund, email us at **biz.sardorbek@gmail.com** with:
+- The email address used to purchase
+- Your Lemon Squeezy order number (found in your purchase confirmation email)
+
+We will process your refund within **5 business days**. Refunds are issued to the original payment method.
+
+**Renewals**
+
+Refunds are not available for renewal charges after the 7-day window has passed. To avoid being charged for a renewal, cancel your subscription at least 24 hours before the next billing date via your Account page.
+
+**Free Plan**
+
+The Free plan is available at no charge and is not subject to any refund terms.
+
+**Exceptions**
+
+We reserve the right to refuse refunds in cases of:
+- Abuse of the refund policy (multiple refund requests from the same user)
+- Violation of the Terms of Service
+
+**Contact**
+
+For all refund requests: **biz.sardorbek@gmail.com**
+
+Response time: within 2 business days.
+""", unsafe_allow_html=True)
+
+st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
+
+# ── FOOTER ────────────────────────────────────────────────────────────────────
+# FIX: "Pricing" → /pricing (не #pricing)
+# Обновлён: добавлены ссылки на юридические страницы
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="landing-footer">
     <strong style="color: #8B949E;">SubAudit</strong>
     &nbsp;·&nbsp;
     Subscription analytics for SaaS founders
     &nbsp;·&nbsp;
-    <a href="/upload" target="_self" style="color: #4F8EF7; text-decoration:none;">Get started</a>
+    <a href="/upload"   target="_self" style="color: #4F8EF7; text-decoration:none;">Get started</a>
     &nbsp;·&nbsp;
-    <a href="/pricing" target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
+    <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
     &nbsp;·&nbsp;
-    <a href="/account" target="_self" style="color: #4F8EF7; text-decoration:none;">Account</a>
+    <a href="/account"  target="_self" style="color: #4F8EF7; text-decoration:none;">Account</a>
+    <br><br>
+    <span style="font-size: 12px; color: var(--text-caption);">
+        <a href="#terms-of-service" style="color: #6E7681; text-decoration:none;">Terms of Service</a>
+        &nbsp;·&nbsp;
+        <a href="#privacy-policy"   style="color: #6E7681; text-decoration:none;">Privacy Policy</a>
+        &nbsp;·&nbsp;
+        <a href="#refund-policy"    style="color: #6E7681; text-decoration:none;">Refund Policy</a>
+    </span>
     <br><br>
     <span style="font-size: 12px;">
         Files are processed in-memory and NEVER stored or sent to third parties.
