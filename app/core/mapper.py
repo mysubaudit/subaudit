@@ -46,7 +46,7 @@ CANONICAL_FIELDS: dict[str, list[str]] = {
     # (поле customer_id), что выше порога 75. При порядке customer_id→status
     # жадный алгоритм забирал "subscription_status" в customer_id до того,
     # как status успевал его захватить. Перестановка устраняет ложное
-    # срабатывание. (Section 17: test_no_false_positive_updated_by)
+    # срабатывание. (Section 17: test_no_false_positive_created_by)
     "status": [
         "status",
         "subscription_status",
@@ -299,8 +299,9 @@ def get_unmapped_required_fields(mapping: dict[str, Optional[str]]) -> list[str]
     Используется в 3_mapping.py для отображения ошибки пользователю,
     пока все обязательные поля не сопоставлены.
     """
-    required: list[str] = [f for f in CANONICAL_FIELDS if f != "currency"]
-    return [field for field in required if mapping.get(field) is None]
+    # Используем константу REQUIRED_FIELDS, определённую выше,
+    # чтобы не дублировать список вручную (Section 5)
+    return [field for field in REQUIRED_FIELDS if mapping.get(field) is None]
 
 
 def apply_mapping(df, mapping: dict[str, Optional[str]]):

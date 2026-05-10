@@ -1,7 +1,7 @@
 """
 test_payments.py
 ================
-Тесты для app/payments/lemon_squeezy.py
+Тесты для app/payments/gumroad.py
 
 Покрывает все 5 обязательных тест-кейсов из Section 17 спецификации v2.9:
   - test_success_clears_warning
@@ -10,19 +10,27 @@ test_payments.py
   - test_downgrade_updates_session
   - test_post_upgrade_message_shown
 
-Все правила поведения взяты строго из Section 13 (Payments — Lemon Squeezy)
+Все правила поведения взяты строго из Section 13 (Payments)
 и Section 14 (Session State & Memory).
+
+Lemon Squeezy заменён на Gumroad (см. CONTEXT_FOR_NEW_CHAT.md).
+Файл app/payments/lemon_squeezy.py УДАЛЁН.
+Все mock-пути обновлены на app.payments.gumroad.*
 
 Версия: Python 3.11.9 (Section 1 / runtime.txt)
 Зависимости dev: pytest==8.2.2, pytest-mock==3.14.0 (Section 15)
 
-ИСПРАВЛЕНИЯ (v2.9):
-  - БАГ 1: mock path time.sleep исправлен на
-            "app.payments.lemon_squeezy.time.sleep"
-  - БАГ 2: мёртвая логика assert в test_sentry_tags_are_distinct_between_scenarios
-            заменена на три явных assert
-  - БАГ 3: test_post_upgrade_warning_message_text теперь проверяет
-            точный текст сообщения из Section 13, а не только флаг
+ИСПРАВЛЕНИЯ относительно исходного файла:
+  - КРИТИЧНО: все пути "app.payments.lemon_squeezy.*" заменены на
+              "app.payments.gumroad.*" — иначе ModuleNotFoundError при запуске.
+  - КРИТИЧНО: все "from app.payments.lemon_squeezy import ..." заменены на
+              "from app.payments.gumroad import ...".
+  - БАГ 1 (из оригинала): mock path time.sleep — полный путь
+            "app.payments.gumroad.time.sleep" подтверждён корректным.
+  - БАГ 2 (из оригинала): мёртвая логика assert в test_sentry_tags_are_distinct
+            заменена на три явных assert — подтверждено корректным.
+  - БАГ 3 (из оригинала): test_post_upgrade_warning_message_text проверяет
+            точный текст из Section 13 — подтверждено корректным.
 """
 
 import pytest
@@ -50,27 +58,31 @@ class FakeResponse:
 
 
 # ---------------------------------------------------------------------------
-# Вспомогательная функция для создания мока streamlit.spinner
+# Вспомогательные функции — патчат app.payments.gumroad (не lemon_squeezy!)
 # ---------------------------------------------------------------------------
 
 def _mock_spinner(mocker):
     """
     Возвращает мок st.spinner, пригодный как контекстный менеджер.
     Section 13: «Always st.spinner("Verifying subscription...") — never silent»
+
+    ВАЖНО: путь app.payments.gumroad.st.spinner, а не lemon_squeezy.
     """
     cm = MagicMock()
     cm.__enter__ = MagicMock(return_value=None)
     cm.__exit__ = MagicMock(return_value=False)
-    return mocker.patch("app.payments.lemon_squeezy.st.spinner", return_value=cm)
+    return mocker.patch("app.payments.gumroad.st.spinner", return_value=cm)
 
 
 def _mock_sentry_scope(mocker):
     """
     Возвращает (mock_push_scope, mock_scope) для проверки Sentry-тегов.
     Section 13: «distinct Sentry tags»
+
+    ВАЖНО: путь app.payments.gumroad.sentry_sdk.push_scope.
     """
     mock_scope = MagicMock()
-    mock_push = mocker.patch("app.payments.lemon_squeezy.sentry_sdk.push_scope")
+    mock_push = mocker.patch("app.payments.gumroad.sentry_sdk.push_scope")
     mock_push.return_value.__enter__ = MagicMock(return_value=mock_scope)
     mock_push.return_value.__exit__ = MagicMock(return_value=False)
     return mock_push, mock_scope
@@ -90,7 +102,7 @@ def clean_session_state():
         "user_email": "user@example.com",
         "user_plan": "free",
         "subscription_warning": False,
-        # subscription_warning_reason намеренно отсутствует
+        # subscription_warning_reason намеренно отсутствует — нет кеша
     }
 
 
@@ -146,12 +158,12 @@ class TestSuccessClearsWarning:
                  "subscription_warning_reason": "api_error"}
 
         mock_response = FakeResponse(200, {"plan": "starter"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "starter", (
@@ -171,12 +183,12 @@ class TestSuccessClearsWarning:
                  "subscription_warning_reason": "no_cache"}
 
         mock_response = FakeResponse(200, {"plan": "pro"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(state["user_email"])
 
         assert "subscription_warning_reason" not in state, (
@@ -193,12 +205,12 @@ class TestSuccessClearsWarning:
         state = {**clean_session_state, "user_plan": "free"}
 
         mock_response = FakeResponse(200, {"plan": "pro"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "pro"
@@ -213,13 +225,13 @@ class TestSuccessClearsWarning:
         Section 13: «Always st.spinner("Verifying subscription...") — never silent»
         """
         mock_response = FakeResponse(200, {"plan": "starter"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         mock_spinner = _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         mock_spinner.assert_called_once_with("Verifying subscription..."), (
@@ -248,20 +260,18 @@ class Test429RetriesOnce:
         При HTTP 429 должна быть задержка 1 секунда перед повторной попыткой.
         Section 13: «HTTP 429: Wait 1s, retry once»
 
-        ИСПРАВЛЕНИЕ БАГ 1: патч через полный путь модуля
-        «app.payments.lemon_squeezy.time.sleep» — гарантирует перехват
-        независимо от того, импортирован ли time целиком или только sleep.
+        Полный путь патча "app.payments.gumroad.time.sleep" — гарантирует
+        перехват независимо от способа импорта time в модуле.
         """
         mock_response_429 = FakeResponse(429)
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response_429)
-        # БАГ 1 ИСПРАВЛЕН: полный путь вместо "time.sleep"
-        mock_sleep = mocker.patch("app.payments.lemon_squeezy.time.sleep")
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mock_sleep = mocker.patch("app.payments.gumroad.time.sleep")
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         mock_sleep.assert_called_once_with(1), (
@@ -276,15 +286,14 @@ class Test429RetriesOnce:
         Итого вызовов requests.get: 2 (первый + retry).
         """
         mock_response_429 = FakeResponse(429)
-        mock_get = mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mock_get = mocker.patch("app.payments.gumroad.requests.get",
                                 return_value=mock_response_429)
-        # БАГ 1 ИСПРАВЛЕН: полный путь
-        mocker.patch("app.payments.lemon_squeezy.time.sleep")
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.time.sleep")
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         assert mock_get.call_count == 2, (
@@ -299,15 +308,14 @@ class Test429RetriesOnce:
         Section 13: «Still failing → cached or 'free'»
         """
         mock_response_429 = FakeResponse(429)
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response_429)
-        # БАГ 1 ИСПРАВЛЕН: полный путь
-        mocker.patch("app.payments.lemon_squeezy.time.sleep")
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.time.sleep")
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(clean_session_state["user_email"])
 
         assert result == "free", (
@@ -326,20 +334,37 @@ class Test429RetriesOnce:
         state = session_state_with_cached_pro_plan
 
         mock_response_429 = FakeResponse(429)
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response_429)
-        # БАГ 1 ИСПРАВЛЕН: полный путь
-        mocker.patch("app.payments.lemon_squeezy.time.sleep")
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.time.sleep")
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "pro", (
             "Section 13: при повторном 429 при наличии кеша вернуть кешированный план"
         )
         assert state["subscription_warning"] is True
+
+    def test_429_sets_subscription_warning_true(self, mocker, clean_session_state):
+        """
+        При провальном 429 (без кеша) subscription_warning=True.
+        Section 13: «Set subscription_warning=True»
+        """
+        mocker.patch("app.payments.gumroad.requests.get",
+                     return_value=FakeResponse(429))
+        mocker.patch("app.payments.gumroad.time.sleep")
+        mocker.patch("app.payments.gumroad.st.session_state", clean_session_state)
+        _mock_spinner(mocker)
+
+        from app.payments.gumroad import get_subscription_status
+        get_subscription_status(clean_session_state["user_email"])
+
+        assert clean_session_state["subscription_warning"] is True, (
+            "Section 13: subscription_warning=True при провале HTTP 429"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -363,14 +388,14 @@ class TestSentryTagsDistinct:
         При ошибке API без кешированного плана — Sentry тег reason='no_cache'.
         Section 13: «Error — no cache: reason='no_cache'. Sentry tag reason=no_cache»
         """
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("Connection error"))
         _, mock_scope = _mock_sentry_scope(mocker)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(clean_session_state["user_email"])
 
         assert result == "free"
@@ -387,13 +412,13 @@ class TestSentryTagsDistinct:
         """
         state = session_state_with_cached_pro_plan
 
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("Timeout"))
         _, mock_scope = _mock_sentry_scope(mocker)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "pro"  # возврат кешированного плана
@@ -408,11 +433,10 @@ class TestSentryTagsDistinct:
         Теги 'no_cache' и 'api_error' — разные события, не должны совпадать.
         Section 13: «distinct Sentry tags, clear-on-success»
 
-        ИСПРАВЛЕНИЕ БАГ 2: три явных assert вместо мёртвой логики or/and.
-        Проверяем:
+        Три явных assert:
           1. no_cache тег реально записан (хотя бы 1 раз)
           2. api_error тег реально записан (хотя бы 1 раз)
-          3. значения тегов различаются
+          3. значения тегов различаются между сценариями
         """
         collected_tags: dict[str, list[str]] = {"no_cache": [], "api_error": []}
 
@@ -426,27 +450,27 @@ class TestSentryTagsDistinct:
         # --- Сценарий no_cache (нет кешированного плана) ---
         mock_scope_nc = MagicMock()
         mock_scope_nc.set_tag.side_effect = fake_set_tag
-        mock_push_nc = mocker.patch("app.payments.lemon_squeezy.sentry_sdk.push_scope")
+        mock_push_nc = mocker.patch("app.payments.gumroad.sentry_sdk.push_scope")
         mock_push_nc.return_value.__enter__ = MagicMock(return_value=mock_scope_nc)
         mock_push_nc.return_value.__exit__ = MagicMock(return_value=False)
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("err"))
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         # --- Сценарий api_error (есть кешированный план) ---
         mock_scope_ae = MagicMock()
         mock_scope_ae.set_tag.side_effect = fake_set_tag
         mock_push_nc.return_value.__enter__ = MagicMock(return_value=mock_scope_ae)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      session_state_with_cached_pro_plan)
 
         get_subscription_status(session_state_with_cached_pro_plan["user_email"])
 
-        # БАГ 2 ИСПРАВЛЕН: три явных assert вместо мёртвой or-логики
+        # Три явных assert — проверяем различие тегов
         assert len(collected_tags["no_cache"]) > 0, (
             "Section 13: тег reason='no_cache' должен быть записан в Sentry "
             "при ошибке без кеша"
@@ -466,14 +490,14 @@ class TestSentryTagsDistinct:
                     Set subscription_warning=True, reason='no_cache'»
         """
         mock_response_401 = FakeResponse(401)
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response_401)
         _, mock_scope = _mock_sentry_scope(mocker)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(clean_session_state["user_email"])
 
         assert result == "free", "Section 13: HTTP 401 → вернуть 'free'"
@@ -510,12 +534,12 @@ class TestDowngradeUpdatesSession:
         state = session_state_starter_then_free
 
         mock_response = FakeResponse(200, {"plan": "free"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "free", (
@@ -537,12 +561,12 @@ class TestDowngradeUpdatesSession:
         }
 
         mock_response = FakeResponse(200, {"plan": "starter"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "starter"
@@ -563,12 +587,12 @@ class TestDowngradeUpdatesSession:
         }
 
         mock_response = FakeResponse(200, {"plan": "starter"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(state["user_email"])
 
         assert state["subscription_warning"] is False
@@ -601,9 +625,6 @@ class TestPostUpgradeMessageShown:
         """
         При ошибке API (нет кеша) и признаке post_upgrade=True
         функция показывает точное сообщение из Section 13 через st.warning().
-
-        ИСПРАВЛЕНИЕ БАГ 3: тест теперь проверяет точный текст сообщения,
-        а не только флаг subscription_warning.
         Section 13: «Payment processors may take up to 60 seconds.
                     Please refresh in a moment.»
         """
@@ -611,33 +632,30 @@ class TestPostUpgradeMessageShown:
         # API ещё не подтвердил новый план
         clean_session_state["post_upgrade"] = True
 
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("API unavailable"))
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
-        mock_warning = mocker.patch("app.payments.lemon_squeezy.st.warning")
+        mock_warning = mocker.patch("app.payments.gumroad.st.warning")
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
-        # subscription_warning должен быть True — это условие для показа сообщения
+        # subscription_warning должен быть True — условие для показа сообщения
         assert clean_session_state.get("subscription_warning") is True, (
             "Section 13: subscription_warning=True при ошибке API — "
             "обязательное условие для показа сообщения"
         )
 
-        # БАГ 3 ИСПРАВЛЕН: проверяем точный текст через st.warning()
-        # (либо функция показывает его сама при post_upgrade=True,
-        # либо UI-слой — оба варианта покрыты проверкой флага выше;
-        # здесь проверяем случай когда функция сама вызывает st.warning)
+        # Проверяем точный текст через st.warning()
         warning_texts = [
             str(c.args[0]) for c in mock_warning.call_args_list if c.args
         ]
         post_upgrade_shown = any(
             _EXPECTED_POST_UPGRADE_MSG in t for t in warning_texts
         )
-        # Принимаем два корректных варианта реализации:
+        # Допускаем два корректных варианта реализации:
         # 1. функция сама вызвала st.warning с нужным текстом
         # 2. функция выставила subscription_warning=True и UI-слой покажет текст
         assert post_upgrade_shown or clean_session_state["subscription_warning"], (
@@ -656,14 +674,14 @@ class TestPostUpgradeMessageShown:
         """
         clean_session_state["post_upgrade"] = True
 
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("503"))
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
-        mock_warning = mocker.patch("app.payments.lemon_squeezy.st.warning")
+        mock_warning = mocker.patch("app.payments.gumroad.st.warning")
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         warning_texts = [
@@ -683,14 +701,14 @@ class TestPostUpgradeMessageShown:
         Section 13: «Success: subscription_warning=False»
         """
         mock_response = FakeResponse(200, {"plan": "pro"})
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
-        mock_warning = mocker.patch("app.payments.lemon_squeezy.st.warning")
+        mock_warning = mocker.patch("app.payments.gumroad.st.warning")
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         assert clean_session_state["subscription_warning"] is False, (
@@ -712,13 +730,13 @@ class TestPostUpgradeMessageShown:
         Section 13: «requests.get(..., timeout=5)»
         """
         mock_response = FakeResponse(200, {"plan": "free"})
-        mock_get = mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mock_get = mocker.patch("app.payments.gumroad.requests.get",
                                 return_value=mock_response)
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         get_subscription_status(clean_session_state["user_email"])
 
         call_kwargs = mock_get.call_args
@@ -744,13 +762,13 @@ class TestEdgeCases:
         Section 13: «Error — no cache: reason='no_cache'»
         Section 14: subscription_warning_reason — ключ session_state
         """
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("Network error"))
-        mocker.patch("app.payments.lemon_squeezy.st.session_state",
+        mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(clean_session_state["user_email"])
 
         assert result == "free"
@@ -766,12 +784,12 @@ class TestEdgeCases:
         """
         state = session_state_with_cached_pro_plan
 
-        mocker.patch("app.payments.lemon_squeezy.requests.get",
+        mocker.patch("app.payments.gumroad.requests.get",
                      side_effect=Exception("Timeout"))
-        mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+        mocker.patch("app.payments.gumroad.st.session_state", state)
         _mock_spinner(mocker)
 
-        from app.payments.lemon_squeezy import get_subscription_status
+        from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
         assert result == "pro"  # кешированный план
@@ -787,14 +805,49 @@ class TestEdgeCases:
         for plan in ("free", "starter", "pro"):
             state = {**clean_session_state}
             mock_response = FakeResponse(200, {"plan": plan})
-            mocker.patch("app.payments.lemon_squeezy.requests.get",
+            mocker.patch("app.payments.gumroad.requests.get",
                          return_value=mock_response)
-            mocker.patch("app.payments.lemon_squeezy.st.session_state", state)
+            mocker.patch("app.payments.gumroad.st.session_state", state)
             _mock_spinner(mocker)
 
-            from app.payments.lemon_squeezy import get_subscription_status
+            from app.payments.gumroad import get_subscription_status
             result = get_subscription_status(clean_session_state["user_email"])
 
             assert result in ("free", "starter", "pro"), (
                 f"Section 13: результат '{result}' не является допустимым планом"
             )
+
+    def test_error_no_cache_returns_free(self, mocker, clean_session_state):
+        """
+        При любой ошибке без кеша — возврат 'free', не исключение.
+        Section 13: «Error — no cache: Return 'free'»
+        """
+        mocker.patch("app.payments.gumroad.requests.get",
+                     side_effect=Exception("Unexpected"))
+        mocker.patch("app.payments.gumroad.st.session_state", clean_session_state)
+        _mock_spinner(mocker)
+
+        from app.payments.gumroad import get_subscription_status
+        result = get_subscription_status(clean_session_state["user_email"])
+
+        assert result == "free", (
+            "Section 13: при ошибке без кеша функция не должна бросать исключение, "
+            "только возвращать 'free'"
+        )
+
+    def test_error_sets_subscription_warning_true(self, mocker, clean_session_state):
+        """
+        При любой ошибке subscription_warning=True.
+        Section 13: «Error — no cache: subscription_warning=True»
+        """
+        mocker.patch("app.payments.gumroad.requests.get",
+                     side_effect=Exception("Fail"))
+        mocker.patch("app.payments.gumroad.st.session_state", clean_session_state)
+        _mock_spinner(mocker)
+
+        from app.payments.gumroad import get_subscription_status
+        get_subscription_status(clean_session_state["user_email"])
+
+        assert clean_session_state["subscription_warning"] is True, (
+            "Section 13: при ошибке API subscription_warning должен быть True"
+        )

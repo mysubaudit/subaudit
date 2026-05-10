@@ -612,7 +612,7 @@ st.markdown("""
     </h2>
     <p class="section-body" style="margin: 0 auto 0; text-align:center;">
         No credit card required on the Free plan.
-        All paid plans billed monthly via Lemon Squeezy.
+        All paid plans billed monthly via Gumroad.
     </p>
 
     <div class="pricing-grid">
@@ -698,7 +698,7 @@ st.markdown("""
         <span class="trust-item"><span class="ti">📋</span> CSV — no integrations required</span>
         <span class="trust-item"><span class="ti">⚡</span> Powered by HoltWinters + pandas</span>
         <span class="trust-item"><span class="ti">🐍</span> Python 3.11 · Streamlit Cloud</span>
-        <span class="trust-item"><span class="ti">💳</span> Payments via Lemon Squeezy</span>
+        <span class="trust-item"><span class="ti">💳</span> Payments via Gumroad</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -727,7 +727,7 @@ st.markdown("<div style='height: 48px;'></div>", unsafe_allow_html=True)
 
 # ── LEGAL SECTION ─────────────────────────────────────────────────────────────
 # Terms of Service, Privacy Policy, Refund Policy
-# Требование Lemon Squeezy — обязательные документы на лендинге
+# Обязательные юридические документы на лендинге (Terms / Privacy / Refund)
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="section" style="padding-top: 48px; padding-bottom: 16px;">
@@ -768,7 +768,7 @@ Access to paid features requires authentication via a magic link sent to your em
 **4. Subscription Plans and Billing**
 
 - **Free** plan: available without registration, limited to 1,000 rows per session.
-- **Starter** ($19/month) and **Pro** ($49/month) plans are billed as monthly recurring subscriptions through Lemon Squeezy.
+- **Starter** ($19/month) and **Pro** ($49/month) plans are billed as monthly recurring subscriptions through Gumroad.
 - Subscriptions renew automatically on the same day each month unless cancelled before the renewal date.
 - Plan features are enforced at the time of export. Downgrade mid-session may not be reflected until the next login.
 
@@ -834,7 +834,7 @@ We use Supabase to manage user accounts. When you request a magic link, your ema
 
 **4. Payments**
 
-Payments are handled by **Lemon Squeezy**. SubAudit never processes or stores payment card information. Lemon Squeezy's Privacy Policy applies to all payment transactions.
+Payments are handled by **Gumroad**. SubAudit never processes or stores payment card information. Gumroad's Privacy Policy applies to all payment transactions.
 
 **5. Error Tracking**
 
@@ -859,7 +859,7 @@ You may request deletion of your account and email address at any time by contac
 | Service | Purpose | Privacy Policy |
 |---------|---------|----------------|
 | Supabase | Authentication & database | supabase.com/privacy |
-| Lemon Squeezy | Payments & subscriptions | lemonsqueezy.com/privacy |
+| Gumroad | Payments & subscriptions | gumroad.com/privacy |
 | Sentry | Error monitoring | sentry.io/privacy |
 | Streamlit Community Cloud | Application hosting | streamlit.io/privacy |
 
@@ -887,7 +887,7 @@ If you are not satisfied with your Starter or Pro subscription, you may request 
 
 To request a refund, email us at **biz.sardorbek@gmail.com** with:
 - The email address used to purchase
-- Your Lemon Squeezy order number (found in your purchase confirmation email)
+- Your Gumroad order number (found in your purchase confirmation email)
 
 We will process your refund within **5 business days**. Refunds are issued to the original payment method.
 

@@ -6,13 +6,18 @@ Spec: Section 17 — «AST NodeVisitor — direct + aliased mutations across app
 чистыми (pure) — они не должны мутировать переданный df.
 Все файлы app/**/*.py проверяются на:
   1. Прямые мутации через индексирование: df['col'] = value
-  2. Аугментированные присваивания: df['col'] += value
-  3. Использование inplace=True на DataFrame-методах
-  4. Алиасные присваивания без .copy(): df2 = df (потенциальный side-effect)
+  2. Мутации через .loc/.iloc/.at/.iat: df.loc[0, 'col'] = value
+  3. Аугментированные присваивания (имя): df['col'] += value
+  4. Аугментированные присваивания (атрибут): df.loc[0] += value  ← FIX: было не задетектировано
+  5. Использование inplace=True на DataFrame-методах
+  6. Алиасные присваивания без .copy(): df2 = df (потенциальный side-effect)
 
 Чистые функции определены в PURE_FUNCTION_FILES — здесь запрещены любые мутации.
 В остальных файлах app/**/*.py запрещены inplace=True и алиасные мутации.
-Исключение: app/core/cleaner.py — имеет право строить df_clean из df_raw.
+Исключение: app/core/cleaner.py — имеет право строить df_clean из df_raw через subscript.
+
+KNOWN LIMITATION: алиас-цепочки (df2 = df; df2['col'] = val) не отслеживаются —
+для этого нужен полноценный data flow анализ, выходящий за рамки статического AST-обхода.
 """
 
 import ast
@@ -20,7 +25,7 @@ import os
 import sys
 import textwrap
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 
 import pytest
 
@@ -49,6 +54,9 @@ CLEANER_FILE = os.path.join("core", "cleaner.py")
 # Имена переменных, которые трактуются как DataFrame
 # Любое имя, начинающееся с 'df', считается датафреймом
 DF_NAME_PREFIX = "df"
+
+# Методы-атрибуты DataFrame, через которые возможны subscript-мутации
+MUTABLE_ATTRS = ("loc", "iloc", "at", "iat")
 
 # Примечание: visit_Call флагирует ВСЕ вызовы inplace=True на df-* переменных —
 # без фильтрации по конкретному списку методов. Это намеренно: спека (Section 17)
@@ -105,118 +113,149 @@ class DataFrameMutationVisitor(ast.NodeVisitor):
     AST NodeVisitor для обнаружения прямых и алиасных мутаций DataFrame.
     Spec Section 17: «AST NodeVisitor — direct + aliased mutations».
 
-    Проверяет три класса нарушений:
-      A) direct_subscript   — df['col'] = value  /  df.loc[...] = value
-      B) augmented_assign   — df['col'] += value
-      C) inplace_true       — df.dropna(inplace=True)
-      D) aliased_no_copy    — df2 = df  (алиас без .copy())
+    Проверяет пять классов нарушений:
+      A) direct_subscript      — df['col'] = value
+      B) direct_subscript_attr — df.loc[...] = value / df.at[...] = value
+      C) augmented_assign      — df['col'] += value  ИЛИ  df.loc[0] += value
+      D) inplace_true          — df.dropna(inplace=True)
+      E) aliased_no_copy       — df2 = df  (алиас без .copy())
+
+    KNOWN LIMITATION: алиас-цепочки (df2 = df; df2['col'] = val) не отслеживаются —
+    требует data flow анализа. Для статического AST-обхода это выходит за рамки задачи.
     """
 
     def __init__(self, filename: str, allow_subscript: bool = False):
         """
         :param filename: путь к файлу (для сообщений об ошибках)
-        :param allow_subscript: если True — subscript-мутации разрешены (для cleaner.py)
+        :param allow_subscript: если True — subscript-мутации разрешены (только cleaner.py)
         """
         self.filename = filename
         self.allow_subscript = allow_subscript
         self.violations: List[MutationViolation] = []
 
-        # Словарь алиасов: {алиас: оригинал} — отслеживаем в рамках модуля
-        self._aliases: Dict[str, str] = {}
+    # ------------------------------------------------------------------
+    # Вспомогательный метод: добавить нарушение
+    # ------------------------------------------------------------------
+
+    def _add(self, vtype: str, line: int, detail: str) -> None:
+        """Добавляет нарушение в список."""
+        self.violations.append(MutationViolation(
+            violation_type=vtype,
+            file_path=self.filename,
+            line=line,
+            detail=detail,
+        ))
 
     # ------------------------------------------------------------------
-    # A + D: Обычные присваивания
+    # A + B + E: Обычные присваивания
     # ------------------------------------------------------------------
 
     def visit_Assign(self, node: ast.Assign) -> None:
         """
-        Обрабатывает присваивания двух видов:
-          D) алиасное: df2 = df  (без .copy())
+        Обрабатывает присваивания трёх видов:
+          E) алиасное: df2 = df  (без .copy())
           A) прямое subscript: df['col'] = value
+          B) через атрибут: df.loc[...] = value / df.at[...] = value
         """
         for target in node.targets:
 
-            # --- A: прямая subscript-мутация ---
+            # --- A + B: subscript-мутации ---
             if isinstance(target, ast.Subscript) and not self.allow_subscript:
                 obj = target.value
+
+                # A: df['col'] = value — прямой subscript
                 if isinstance(obj, ast.Name) and _is_df_name(obj.id):
-                    self.violations.append(MutationViolation(
-                        violation_type="direct_subscript",
-                        file_path=self.filename,
-                        line=node.lineno,
-                        detail=(
-                            f"Прямая мутация DataFrame через индексирование: "
-                            f"{obj.id}[...] = ... "
-                            f"(строка {node.lineno}). "
-                            f"Используйте df = df.assign(...) или df.copy()."
-                        ),
-                    ))
+                    self._add(
+                        "direct_subscript",
+                        node.lineno,
+                        f"Прямая мутация через индексирование: {obj.id}[...] = ... "
+                        f"(строка {node.lineno}). Используйте df.assign(...).",
+                    )
 
-                # Attr-доступ: df.loc[...] = value / df.iloc[...] = value
-                if isinstance(obj, ast.Attribute) and isinstance(obj.value, ast.Name):
-                    if _is_df_name(obj.value.id) and obj.attr in ("loc", "iloc", "at", "iat"):
-                        self.violations.append(MutationViolation(
-                            violation_type="direct_subscript_attr",
-                            file_path=self.filename,
-                            line=node.lineno,
-                            detail=(
-                                f"Мутация DataFrame через .{obj.attr}[...] = ...: "
-                                f"{obj.value.id}.{obj.attr} (строка {node.lineno}). "
-                                f"Используйте pd.DataFrame.assign() или copy()."
-                            ),
-                        ))
+                # B: df.loc[...] = value / df.iloc[...] = value / df.at[...] / df.iat[...]
+                elif (
+                    isinstance(obj, ast.Attribute)
+                    and isinstance(obj.value, ast.Name)
+                    and _is_df_name(obj.value.id)
+                    and obj.attr in MUTABLE_ATTRS
+                ):
+                    self._add(
+                        "direct_subscript_attr",
+                        node.lineno,
+                        f"Мутация через .{obj.attr}[...] = ...: {obj.value.id}.{obj.attr} "
+                        f"(строка {node.lineno}). Используйте df.assign(...).",
+                    )
 
-            # --- D: алиасное присваивание без .copy() ---
+            # --- E: алиасное присваивание без .copy() ---
             if isinstance(target, ast.Name) and _is_df_name(target.id):
                 rhs = node.value
-
-                # df2 = df — простой алиас
+                # df2 = df — простой алиас (RHS — голое имя, начинающееся с 'df')
                 if isinstance(rhs, ast.Name) and _is_df_name(rhs.id):
-                    self._aliases[target.id] = rhs.id
-                    self.violations.append(MutationViolation(
-                        violation_type="aliased_no_copy",
-                        file_path=self.filename,
-                        line=node.lineno,
-                        detail=(
-                            f"Алиасное присваивание без .copy(): "
-                            f"{target.id} = {rhs.id} (строка {node.lineno}). "
-                            f"Используйте {target.id} = {rhs.id}.copy()."
-                        ),
-                    ))
+                    self._add(
+                        "aliased_no_copy",
+                        node.lineno,
+                        f"Алиасное присваивание без .copy(): {target.id} = {rhs.id} "
+                        f"(строка {node.lineno}). Используйте {target.id} = {rhs.id}.copy().",
+                    )
 
         self.generic_visit(node)
 
     # ------------------------------------------------------------------
-    # B: Аугментированные присваивания
+    # C: Аугментированные присваивания
     # ------------------------------------------------------------------
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
         """
-        B) df['col'] += value — всегда мутация.
-        Spec Section 17: прямые мутации.
+        C) Аугментированные присваивания через subscript.
+        Два подвида:
+          C1) df['col'] += value     — target.value — ast.Name
+          C2) df.loc[0] += value     — target.value — ast.Attribute  ← ИСПРАВЛЕНО
+              df.iloc[0, 1] += value
+              df.at[0, 'col'] += value
+              df.iat[0, 1] += value
+        В отличие от Assign, аугментированное присваивание — ВСЕГДА мутация.
+        allow_subscript не применяется: += запрещён даже в cleaner.py.
         """
         target = node.target
-        if isinstance(target, ast.Subscript):
-            obj = target.value
-            if isinstance(obj, ast.Name) and _is_df_name(obj.id):
-                self.violations.append(MutationViolation(
-                    violation_type="augmented_assign",
-                    file_path=self.filename,
-                    line=node.lineno,
-                    detail=(
-                        f"Аугментированное присваивание-мутация: "
-                        f"{obj.id}[...] += ... (строка {node.lineno})."
-                    ),
-                ))
+        if not isinstance(target, ast.Subscript):
+            self.generic_visit(node)
+            return
+
+        obj = target.value
+
+        # C1: df['col'] += value
+        if isinstance(obj, ast.Name) and _is_df_name(obj.id):
+            self._add(
+                "augmented_assign",
+                node.lineno,
+                f"Аугментированное присваивание-мутация: {obj.id}[...] += ... "
+                f"(строка {node.lineno}). Используйте df.assign(...).",
+            )
+
+        # C2: df.loc[0] += value / df.at[0, 'col'] += value (ранее не детектировалось!)
+        elif (
+            isinstance(obj, ast.Attribute)
+            and isinstance(obj.value, ast.Name)
+            and _is_df_name(obj.value.id)
+            and obj.attr in MUTABLE_ATTRS
+        ):
+            self._add(
+                "augmented_assign_attr",
+                node.lineno,
+                f"Аугментированное присваивание через .{obj.attr}: "
+                f"{obj.value.id}.{obj.attr}[...] += ... (строка {node.lineno}). "
+                f"Используйте df.assign(...).",
+            )
+
         self.generic_visit(node)
 
     # ------------------------------------------------------------------
-    # C: inplace=True
+    # D: inplace=True
     # ------------------------------------------------------------------
 
     def visit_Call(self, node: ast.Call) -> None:
         """
-        C) df.dropna(inplace=True) — мутирует объект на месте.
+        D) df.dropna(inplace=True) — мутирует объект на месте.
         Spec Section 9: функции-метрики обязаны быть чистыми.
         """
         for keyword in node.keywords:
@@ -231,16 +270,13 @@ class DataFrameMutationVisitor(ast.NodeVisitor):
                     caller = node.func.value
                     method_name = node.func.attr
                     if isinstance(caller, ast.Name) and _is_df_name(caller.id):
-                        self.violations.append(MutationViolation(
-                            violation_type="inplace_true",
-                            file_path=self.filename,
-                            line=node.lineno,
-                            detail=(
-                                f"inplace=True на {caller.id}.{method_name}() "
-                                f"(строка {node.lineno}). "
-                                f"Используйте {caller.id} = {caller.id}.{method_name}(...)."
-                            ),
-                        ))
+                        self._add(
+                            "inplace_true",
+                            node.lineno,
+                            f"inplace=True на {caller.id}.{method_name}() "
+                            f"(строка {node.lineno}). "
+                            f"Используйте {caller.id} = {caller.id}.{method_name}(...).",
+                        )
         self.generic_visit(node)
 
 
@@ -284,100 +320,96 @@ def _analyse_file(
 
 
 # ---------------------------------------------------------------------------
-# Тесты
+# Тесты: чистые функции (metrics.py, forecast.py, simulation.py)
 # ---------------------------------------------------------------------------
 
 class TestImmutabilityPureFunctions:
     """
     Группа тестов для PURE_FUNCTION_FILES (metrics.py, forecast.py, simulation.py).
-    Spec Section 9: «Do NOT cache individual metric functions» — функции чистые.
+    Spec Section 9: функции чистые — принимают df, не изменяют его.
     Spec Section 17: AST NodeVisitor — direct + aliased mutations.
 
-    В этих файлах ЗАПРЕЩЕНЫ любые мутации DataFrame:
-      - subscript-присваивания
-      - inplace=True
-      - алиасы без .copy()
+    В этих файлах ЗАПРЕЩЕНЫ любые мутации DataFrame.
     """
 
     @pytest.mark.parametrize("relative_path", PURE_FUNCTION_FILES)
     def test_no_direct_subscript_mutation(self, relative_path: str) -> None:
         """
         Проверяет: df['col'] = value не встречается в чистых функциях.
-        Spec Section 9: метрические функции принимают (df) и возвращают скаляр/None.
-        Прямая запись в df нарушает чистоту функции и может портить кеш st.cache_data.
+        Spec Section 9: calculate_mrr(df) возвращает float, df не изменяется.
         """
         file_path = APP_DIR / relative_path
         if not file_path.exists():
             pytest.skip(f"Файл ещё не создан: {relative_path} (Spec Section 16 Step 8)")
 
         violations = _analyse_file(file_path, allow_subscript=False)
-        subscript_violations = [
-            v for v in violations if v.violation_type in ("direct_subscript", "direct_subscript_attr")
+        subscript_v = [
+            v for v in violations
+            if v.violation_type in ("direct_subscript", "direct_subscript_attr")
         ]
-
-        assert not subscript_violations, (
-            f"\n[{relative_path}] Обнаружены прямые subscript-мутации DataFrame "
-            f"(Spec Section 9 — pure functions):\n"
-            + "\n".join(f"  • {v}" for v in subscript_violations)
+        assert not subscript_v, (
+            f"\n[{relative_path}] Прямые subscript-мутации (Spec Section 9):\n"
+            + "\n".join(f"  • {v}" for v in subscript_v)
         )
 
     @pytest.mark.parametrize("relative_path", PURE_FUNCTION_FILES)
     def test_no_inplace_true(self, relative_path: str) -> None:
         """
         Проверяет: inplace=True отсутствует в чистых функциях.
-        Spec Section 9: функции не должны мутировать входной df.
+        Spec Section 9.
         """
         file_path = APP_DIR / relative_path
         if not file_path.exists():
             pytest.skip(f"Файл ещё не создан: {relative_path} (Spec Section 16 Step 8)")
 
         violations = _analyse_file(file_path, allow_subscript=False)
-        inplace_violations = [v for v in violations if v.violation_type == "inplace_true"]
-
-        assert not inplace_violations, (
-            f"\n[{relative_path}] Обнаружено inplace=True в чистой функции "
-            f"(Spec Section 9):\n"
-            + "\n".join(f"  • {v}" for v in inplace_violations)
+        inplace_v = [v for v in violations if v.violation_type == "inplace_true"]
+        assert not inplace_v, (
+            f"\n[{relative_path}] inplace=True в чистой функции (Spec Section 9):\n"
+            + "\n".join(f"  • {v}" for v in inplace_v)
         )
 
     @pytest.mark.parametrize("relative_path", PURE_FUNCTION_FILES)
     def test_no_aliased_mutation_without_copy(self, relative_path: str) -> None:
         """
-        Проверяет: алиасные присваивания (df2 = df) отсутствуют без вызова .copy().
-        Spec Section 17: «aliased mutations» — алиас без copy() изменяет оригинал.
+        Проверяет: алиасные присваивания (df2 = df) отсутствуют без .copy().
+        Spec Section 17: aliased mutations.
         """
         file_path = APP_DIR / relative_path
         if not file_path.exists():
             pytest.skip(f"Файл ещё не создан: {relative_path} (Spec Section 16 Step 8)")
 
         violations = _analyse_file(file_path, allow_subscript=False)
-        alias_violations = [v for v in violations if v.violation_type == "aliased_no_copy"]
-
-        assert not alias_violations, (
-            f"\n[{relative_path}] Алиасные мутации без .copy() "
-            f"(Spec Section 17 — aliased mutations):\n"
-            + "\n".join(f"  • {v}" for v in alias_violations)
+        alias_v = [v for v in violations if v.violation_type == "aliased_no_copy"]
+        assert not alias_v, (
+            f"\n[{relative_path}] Алиасные мутации без .copy() (Spec Section 17):\n"
+            + "\n".join(f"  • {v}" for v in alias_v)
         )
 
     @pytest.mark.parametrize("relative_path", PURE_FUNCTION_FILES)
     def test_no_augmented_assign_mutation(self, relative_path: str) -> None:
         """
-        Проверяет: df['col'] += value не встречается в чистых функциях.
-        Spec Section 17: direct mutations.
+        Проверяет: df['col'] += value и df.loc[0] += value отсутствуют.
+        Spec Section 17: direct mutations. Покрывает оба подвида (C1 и C2).
         """
         file_path = APP_DIR / relative_path
         if not file_path.exists():
             pytest.skip(f"Файл ещё не создан: {relative_path} (Spec Section 16 Step 8)")
 
         violations = _analyse_file(file_path, allow_subscript=False)
-        aug_violations = [v for v in violations if v.violation_type == "augmented_assign"]
-
-        assert not aug_violations, (
-            f"\n[{relative_path}] Аугментированные мутации DataFrame "
-            f"(Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in aug_violations)
+        aug_v = [
+            v for v in violations
+            if v.violation_type in ("augmented_assign", "augmented_assign_attr")
+        ]
+        assert not aug_v, (
+            f"\n[{relative_path}] Аугментированные мутации DataFrame (Spec Section 17):\n"
+            + "\n".join(f"  • {v}" for v in aug_v)
         )
 
+
+# ---------------------------------------------------------------------------
+# Тесты: все файлы app/**/*.py
+# ---------------------------------------------------------------------------
 
 class TestImmutabilityAllAppFiles:
     """
@@ -385,135 +417,144 @@ class TestImmutabilityAllAppFiles:
     Spec Section 17: «across app/**/*.py».
 
     inplace=True и алиасные мутации запрещены глобально.
-    Исключение для subscript-мутаций: cleaner.py (строит df_clean из df_raw).
+    Subscript-мутации разрешены только в cleaner.py.
     """
 
     def test_no_inplace_true_anywhere(self) -> None:
         """
         Проверяет: inplace=True нигде не используется в app/**/*.py.
-        Spec Section 17 — запрет inplace-мутаций по всему приложению.
-        Всегда безопаснее: df = df.method() вместо df.method(inplace=True).
+        Spec Section 17.
         """
         app_files = _collect_app_files()
         if not app_files:
             pytest.skip(f"Папка {APP_DIR} не найдена или пуста (Spec Section 16 Step 8)")
 
-        all_violations: List[MutationViolation] = []
-        for file_path in app_files:
-            violations = _analyse_file(file_path, allow_subscript=True)
-            inplace_v = [v for v in violations if v.violation_type == "inplace_true"]
-            all_violations.extend(inplace_v)
+        all_v: List[MutationViolation] = []
+        for fp in app_files:
+            vs = _analyse_file(fp, allow_subscript=True)
+            all_v.extend(v for v in vs if v.violation_type == "inplace_true")
 
-        assert not all_violations, (
-            f"\n[ALL app/**/*.py] inplace=True запрещён во всём приложении "
-            f"(Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in all_violations)
+        assert not all_v, (
+            f"\n[ALL app/**/*.py] inplace=True запрещён (Spec Section 17):\n"
+            + "\n".join(f"  • {v}" for v in all_v)
         )
 
     def test_no_aliased_mutation_anywhere(self) -> None:
         """
         Проверяет: алиасные присваивания DataFrame без .copy() отсутствуют везде.
-        Spec Section 17: «aliased mutations across app/**/*.py».
-        df2 = df создаёт ссылку на тот же объект — любое последующее изменение
-        df2 меняет df, что нарушает чистоту метрических функций (Section 9).
+        Spec Section 17: aliased mutations across app/**/*.py.
         """
         app_files = _collect_app_files()
         if not app_files:
             pytest.skip(f"Папка {APP_DIR} не найдена или пуста (Spec Section 16 Step 8)")
 
-        all_violations: List[MutationViolation] = []
-        for file_path in app_files:
-            violations = _analyse_file(file_path, allow_subscript=True)
-            alias_v = [v for v in violations if v.violation_type == "aliased_no_copy"]
-            all_violations.extend(alias_v)
+        all_v: List[MutationViolation] = []
+        for fp in app_files:
+            vs = _analyse_file(fp, allow_subscript=True)
+            all_v.extend(v for v in vs if v.violation_type == "aliased_no_copy")
 
-        assert not all_violations, (
+        assert not all_v, (
             f"\n[ALL app/**/*.py] Алиасные мутации без .copy() (Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in all_violations)
+            + "\n".join(f"  • {v}" for v in all_v)
         )
 
-    def test_cleaner_is_excluded_from_subscript_check(self) -> None:
+    def test_non_cleaner_files_have_no_subscript_mutations(self) -> None:
         """
-        Проверяет, что cleaner.py корректно ИСКЛЮЧЁН из строгой subscript-проверки.
-        Spec Section 3: clean_data() строит df_clean — subscript-присваивания допустимы.
-        Spec Section 4: app/core/cleaner.py — clean_data() returns df_clean + cleaning_report.
-        Тест гарантирует, что исключение задокументировано и не применяется к другим файлам.
-        """
-        cleaner_path = APP_DIR / CLEANER_FILE
-        if not cleaner_path.exists():
-            pytest.skip(f"Файл cleaner.py не создан (Spec Section 16 Step 3)")
-
-        # allow_subscript=True — subscript-мутации разрешены в cleaner.py
-        violations = _analyse_file(cleaner_path, allow_subscript=True)
-        # Проверяем только inplace и алиасы — они запрещены даже в cleaner.py
-        bad_violations = [
-            v for v in violations
-            if v.violation_type in ("inplace_true", "aliased_no_copy")
-        ]
-
-        assert not bad_violations, (
-            f"\n[cleaner.py] Даже в cleaner.py запрещены inplace=True и алиасы без copy() "
-            f"(Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in bad_violations)
-        )
-
-    def test_pure_files_excluded_from_subscript_globally(self) -> None:
-        """
-        Проверяет, что PURE_FUNCTION_FILES не получают исключение для subscript-мутаций.
-        Все прочие файлы (кроме cleaner.py) также не должны иметь исключения.
-        Spec Section 9, Section 17.
+        Проверяет: subscript-мутации отсутствуют во всех файлах КРОМЕ cleaner.py.
+        Spec Section 9, Section 17. cleaner.py — единственное исключение (Section 4).
         """
         app_files = _collect_app_files()
         if not app_files:
             pytest.skip("Нет файлов для проверки")
 
-        non_cleaner_files = [
-            f for f in app_files
-            if _relative(f) != CLEANER_FILE
-        ]
-
-        all_violations: List[MutationViolation] = []
-        for file_path in non_cleaner_files:
-            violations = _analyse_file(file_path, allow_subscript=False)
-            subscript_v = [
-                v for v in violations
+        non_cleaner = [f for f in app_files if _relative(f) != CLEANER_FILE]
+        all_v: List[MutationViolation] = []
+        for fp in non_cleaner:
+            vs = _analyse_file(fp, allow_subscript=False)
+            all_v.extend(
+                v for v in vs
                 if v.violation_type in ("direct_subscript", "direct_subscript_attr")
-            ]
-            all_violations.extend(subscript_v)
+            )
 
-        assert not all_violations, (
-            f"\n[ALL except cleaner.py] Прямые subscript-мутации запрещены "
-            f"вне cleaner.py (Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in all_violations)
+        assert not all_v, (
+            f"\n[ALL except cleaner.py] Subscript-мутации запрещены (Spec Section 17):\n"
+            + "\n".join(f"  • {v}" for v in all_v)
         )
 
     def test_augmented_assign_mutation_nowhere(self) -> None:
         """
-        Проверяет: df['col'] += value нигде не встречается в app/**/*.py.
-        Spec Section 17: direct mutations. Аугментированное присваивание через subscript
-        всегда является мутацией и не может быть «функциональным».
+        Проверяет: df['col'] += value и df.loc[...] += value нигде не встречаются.
+        Spec Section 17: direct mutations. Оба подвида (C1 и C2) запрещены глобально,
+        включая cleaner.py — += всегда мутация, не может быть «функциональным».
         """
         app_files = _collect_app_files()
         if not app_files:
             pytest.skip("Нет файлов для проверки")
 
-        all_violations: List[MutationViolation] = []
-        for file_path in app_files:
-            violations = _analyse_file(file_path, allow_subscript=True)
-            aug_v = [v for v in violations if v.violation_type == "augmented_assign"]
-            all_violations.extend(aug_v)
+        all_v: List[MutationViolation] = []
+        for fp in app_files:
+            # allow_subscript=False: += не разрешён нигде, даже в cleaner.py
+            vs = _analyse_file(fp, allow_subscript=False)
+            all_v.extend(
+                v for v in vs
+                if v.violation_type in ("augmented_assign", "augmented_assign_attr")
+            )
 
-        assert not all_violations, (
+        assert not all_v, (
             f"\n[ALL app/**/*.py] Аугментированные subscript-мутации (Spec Section 17):\n"
-            + "\n".join(f"  • {v}" for v in all_violations)
+            + "\n".join(f"  • {v}" for v in all_v)
         )
 
+    def test_cleaner_subscript_mutations_are_permitted(self) -> None:
+        """
+        Проверяет, что cleaner.py МОЖЕТ содержать subscript-мутации без флага нарушения.
+        Spec Section 4: clean_data() строит df_clean из df_raw — это допустимо.
+        Позитивный тест: убеждаемся что allow_subscript=True снимает флаги для cleaner.py.
+
+        Примечание: тест проходит (skip), если cleaner.py ещё не создан.
+        Тест проходит (pass), если в cleaner.py нет subscript-мутаций — это тоже OK.
+        Тест ПАДАЕТ только если cleaner.py содержит inplace=True или алиасы без copy().
+        """
+        cleaner_path = APP_DIR / CLEANER_FILE
+        if not cleaner_path.exists():
+            pytest.skip("cleaner.py не создан (Spec Section 16 Step 3)")
+
+        # allow_subscript=True — разрешаем subscript-мутации
+        violations = _analyse_file(cleaner_path, allow_subscript=True)
+        # Даже в cleaner.py запрещены inplace и алиасы
+        bad = [
+            v for v in violations
+            if v.violation_type in (
+                "inplace_true", "aliased_no_copy",
+                "augmented_assign", "augmented_assign_attr",
+            )
+        ]
+        assert not bad, (
+            f"\n[cleaner.py] inplace=True, алиасы без copy() и += запрещены даже в cleaner.py "
+            f"(Spec Section 17):\n"
+            + "\n".join(f"  • {v}" for v in bad)
+        )
+
+        # Позитивная проверка: subscript-флаги НЕ генерируются для cleaner.py
+        subscript_v = [
+            v for v in violations
+            if v.violation_type in ("direct_subscript", "direct_subscript_attr")
+        ]
+        assert not subscript_v, (
+            f"\n[cleaner.py] Subscript-мутации неожиданно флагированы при allow_subscript=True "
+            f"— ошибка в детекторе:\n"
+            + "\n".join(f"  • {v}" for v in subscript_v)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Тесты: валидность Python-кода
+# ---------------------------------------------------------------------------
 
 class TestImmutabilityASTParseable:
     """
     Вспомогательная группа: все файлы app/**/*.py должны быть валидным Python.
     Spec Section 16, Step 8: «Full test suite — all tests pass before deploy».
-    Если файл не парсится — тест-раннер сам не сможет их импортировать.
     """
 
     def test_all_app_files_are_valid_python(self) -> None:
@@ -525,44 +566,40 @@ class TestImmutabilityASTParseable:
         if not app_files:
             pytest.skip(f"Папка {APP_DIR} пуста или не существует")
 
-        syntax_errors: List[str] = []
-        for file_path in app_files:
+        errors: List[str] = []
+        for fp in app_files:
             try:
-                source = file_path.read_text(encoding="utf-8")
-                ast.parse(source, filename=str(file_path))
+                source = fp.read_text(encoding="utf-8")
+                ast.parse(source, filename=str(fp))
             except SyntaxError as exc:
-                syntax_errors.append(f"{_relative(file_path)}: {exc}")
+                errors.append(f"{_relative(fp)}: {exc}")
             except (OSError, UnicodeDecodeError) as exc:
-                syntax_errors.append(f"{_relative(file_path)}: read error — {exc}")
+                errors.append(f"{_relative(fp)}: read error — {exc}")
 
-        assert not syntax_errors, (
-            f"\n[app/**/*.py] SyntaxError — файлы не могут быть проанализированы "
-            f"(Spec Section 16 Step 8):\n"
-            + "\n".join(f"  • {e}" for e in syntax_errors)
+        assert not errors, (
+            f"\n[app/**/*.py] SyntaxError (Spec Section 16 Step 8):\n"
+            + "\n".join(f"  • {e}" for e in errors)
         )
 
     def test_app_directory_exists(self) -> None:
         """
-        Проверяет, что директория app/ существует (Step 8 предполагает, что весь код уже написан).
+        Проверяет, что директория app/ существует.
         Spec Section 4 — Project File Structure, Section 16 Step 8.
         """
         assert APP_DIR.exists(), (
             f"Директория {APP_DIR} не найдена. "
-            f"Убедитесь, что Steps 1–7 из Section 16 выполнены перед запуском теста."
+            f"Убедитесь, что Steps 1–7 из Section 16 выполнены."
         )
         assert APP_DIR.is_dir(), f"{APP_DIR} должна быть директорией."
 
     def test_pure_function_files_exist(self) -> None:
         """
-        Проверяет, что все чистые функции-модули из Section 9 уже созданы к Step 8.
+        Проверяет, что все чистые функции-модули созданы к Step 8.
         Spec Section 16 Step 4: core/metrics.py + core/forecast.py + core/simulation.py.
         """
-        missing = [
-            rp for rp in PURE_FUNCTION_FILES
-            if not (APP_DIR / rp).exists()
-        ]
+        missing = [rp for rp in PURE_FUNCTION_FILES if not (APP_DIR / rp).exists()]
         assert not missing, (
-            f"Следующие файлы чистых функций не найдены (Spec Section 16 Step 4 → Step 8):\n"
+            f"Файлы чистых функций не найдены (Spec Section 16 Step 4 → Step 8):\n"
             + "\n".join(f"  • app/{rp}" for rp in missing)
         )
 
@@ -573,98 +610,130 @@ class TestImmutabilityASTParseable:
 
 class TestMutationVisitorUnit:
     """
-    Тестируем сам MutationViolationVisitor на синтетическом коде.
-    Это гарантирует корректность детектора мутаций до запуска по реальным файлам.
+    Тестируем DataFrameMutationVisitor на синтетическом коде.
+    Гарантирует корректность детектора до запуска по реальным файлам.
     """
 
-    def _parse_and_visit(self, source: str, allow_subscript: bool = False) -> List[MutationViolation]:
-        """Вспомогательный метод: парсит строку кода и возвращает список нарушений."""
+    def _visit(self, source: str, allow_subscript: bool = False) -> List[MutationViolation]:
+        """Парсит строку кода и возвращает список нарушений."""
         tree = ast.parse(textwrap.dedent(source))
         visitor = DataFrameMutationVisitor(filename="<test>", allow_subscript=allow_subscript)
         visitor.visit(tree)
         return visitor.violations
 
-    # --- Прямые subscript-мутации ---
+    def _types(self, source: str, allow_subscript: bool = False) -> List[str]:
+        """Возвращает только типы нарушений."""
+        return [v.violation_type for v in self._visit(source, allow_subscript)]
+
+    # --- A: прямые subscript-мутации ---
 
     def test_direct_subscript_detected(self) -> None:
-        """Детектор находит df['col'] = value."""
-        violations = self._parse_and_visit("df_clean['col'] = 1")
-        types = [v.violation_type for v in violations]
-        assert "direct_subscript" in types
+        """Детектирует df['col'] = value."""
+        assert "direct_subscript" in self._types("df_clean['col'] = 1")
 
     def test_direct_subscript_allowed_in_cleaner(self) -> None:
         """В cleaner.py subscript-мутации разрешены — нарушений нет."""
-        violations = self._parse_and_visit("df_clean['col'] = 1", allow_subscript=True)
-        subscript_v = [v for v in violations if v.violation_type == "direct_subscript"]
-        assert not subscript_v
+        v = [x for x in self._visit("df_clean['col'] = 1", allow_subscript=True)
+             if x.violation_type == "direct_subscript"]
+        assert not v
+
+    # --- B: мутации через .loc/.iloc/.at/.iat ---
 
     def test_loc_mutation_detected(self) -> None:
-        """Детектор находит df.loc[...] = value."""
-        violations = self._parse_and_visit("df_clean.loc[0, 'col'] = 99")
-        types = [v.violation_type for v in violations]
-        assert "direct_subscript_attr" in types
+        """Детектирует df.loc[0, 'col'] = 99."""
+        assert "direct_subscript_attr" in self._types("df_clean.loc[0, 'col'] = 99")
 
     def test_iloc_mutation_detected(self) -> None:
-        """Детектор находит df.iloc[...] = value."""
-        violations = self._parse_and_visit("df.iloc[0] = 0")
-        types = [v.violation_type for v in violations]
-        assert "direct_subscript_attr" in types
+        """Детектирует df.iloc[0] = 0."""
+        assert "direct_subscript_attr" in self._types("df.iloc[0] = 0")
 
-    # --- Аугментированные присваивания ---
+    def test_at_mutation_detected(self) -> None:
+        """Детектирует df.at[0, 'col'] = 5."""
+        assert "direct_subscript_attr" in self._types("df_clean.at[0, 'col'] = 5")
 
-    def test_augmented_assign_detected(self) -> None:
-        """Детектор находит df['col'] += 1."""
-        violations = self._parse_and_visit("df['amount'] += 100")
-        types = [v.violation_type for v in violations]
-        assert "augmented_assign" in types
+    def test_iat_mutation_detected(self) -> None:
+        """Детектирует df.iat[0, 1] = 5."""
+        assert "direct_subscript_attr" in self._types("df.iat[0, 1] = 5")
+
+    def test_loc_mutation_allowed_in_cleaner(self) -> None:
+        """В cleaner.py df.loc[...] = value тоже разрешён (allow_subscript=True)."""
+        v = [x for x in self._visit("df_clean.loc[0, 'col'] = 1", allow_subscript=True)
+             if x.violation_type == "direct_subscript_attr"]
+        assert not v
+
+    # --- C1: аугментированные присваивания через имя ---
+
+    def test_augmented_assign_name_detected(self) -> None:
+        """Детектирует df['amount'] += 100."""
+        assert "augmented_assign" in self._types("df['amount'] += 100")
 
     def test_non_df_augmented_assign_ignored(self) -> None:
         """Аугментированное присваивание на не-df переменной игнорируется."""
-        violations = self._parse_and_visit("result['key'] += 1")
-        types = [v.violation_type for v in violations]
-        assert "augmented_assign" not in types
+        assert "augmented_assign" not in self._types("result['key'] += 1")
 
-    # --- inplace=True ---
+    # --- C2: аугментированные присваивания через атрибут (ранее не детектировалось) ---
+
+    def test_augmented_assign_loc_detected(self) -> None:
+        """Детектирует df_clean.loc[0] += 1 — ранее не ловилось (ИСПРАВЛЕНО)."""
+        assert "augmented_assign_attr" in self._types("df_clean.loc[0] += 1")
+
+    def test_augmented_assign_iloc_detected(self) -> None:
+        """Детектирует df.iloc[0, 1] += 5."""
+        assert "augmented_assign_attr" in self._types("df.iloc[0, 1] += 5")
+
+    def test_augmented_assign_at_detected(self) -> None:
+        """Детектирует df.at[0, 'col'] += 2."""
+        assert "augmented_assign_attr" in self._types("df.at[0, 'col'] += 2")
+
+    def test_augmented_assign_iat_detected(self) -> None:
+        """Детектирует df.iat[0, 1] += 2."""
+        assert "augmented_assign_attr" in self._types("df.iat[0, 1] += 2")
+
+    def test_augmented_assign_attr_non_df_ignored(self) -> None:
+        """df.loc на не-df переменной игнорируется."""
+        assert "augmented_assign_attr" not in self._types("result.loc[0] += 1")
+
+    # --- D: inplace=True ---
 
     def test_inplace_true_detected(self) -> None:
-        """Детектор находит df.dropna(inplace=True)."""
-        violations = self._parse_and_visit("df_clean.dropna(inplace=True)")
-        types = [v.violation_type for v in violations]
-        assert "inplace_true" in types
+        """Детектирует df.dropna(inplace=True)."""
+        assert "inplace_true" in self._types("df_clean.dropna(inplace=True)")
 
     def test_inplace_false_not_flagged(self) -> None:
-        """df.dropna(inplace=False) — не мутация, детектор не срабатывает."""
-        violations = self._parse_and_visit("df_clean.dropna(inplace=False)")
-        inplace_v = [v for v in violations if v.violation_type == "inplace_true"]
-        assert not inplace_v
+        """df.dropna(inplace=False) — не мутация."""
+        v = [x for x in self._visit("df_clean.dropna(inplace=False)")
+             if x.violation_type == "inplace_true"]
+        assert not v
 
     def test_inplace_on_non_df_ignored(self) -> None:
         """inplace=True на не-df переменной игнорируется."""
-        violations = self._parse_and_visit("result.dropna(inplace=True)")
-        inplace_v = [v for v in violations if v.violation_type == "inplace_true"]
-        assert not inplace_v
+        v = [x for x in self._visit("result.dropna(inplace=True)")
+             if x.violation_type == "inplace_true"]
+        assert not v
 
-    # --- Алиасные присваивания ---
+    # --- E: алиасные присваивания ---
 
     def test_alias_without_copy_detected(self) -> None:
-        """Детектор находит df2 = df (без .copy())."""
-        violations = self._parse_and_visit("df_filtered = df_clean")
-        types = [v.violation_type for v in violations]
-        assert "aliased_no_copy" in types
+        """Детектирует df_filtered = df_clean (без .copy())."""
+        assert "aliased_no_copy" in self._types("df_filtered = df_clean")
 
     def test_alias_with_copy_not_detected(self) -> None:
         """df2 = df.copy() — корректно, нарушения нет."""
-        violations = self._parse_and_visit("df_filtered = df_clean.copy()")
-        alias_v = [v for v in violations if v.violation_type == "aliased_no_copy"]
-        assert not alias_v
+        v = [x for x in self._visit("df_filtered = df_clean.copy()")
+             if x.violation_type == "aliased_no_copy"]
+        assert not v
 
     def test_df_slice_not_flagged_as_alias(self) -> None:
-        """df2 = df[df['col'] > 0] — фильтрация, не алиас."""
-        violations = self._parse_and_visit(
-            "df_filtered = df_clean[df_clean['amount'] > 0]"
-        )
-        alias_v = [v for v in violations if v.violation_type == "aliased_no_copy"]
-        assert not alias_v
+        """df2 = df[df['col'] > 0] — фильтрация (RHS не голое имя), не алиас."""
+        v = [x for x in self._visit("df_filtered = df_clean[df_clean['amount'] > 0]")
+             if x.violation_type == "aliased_no_copy"]
+        assert not v
+
+    def test_df_assign_call_not_flagged_as_alias(self) -> None:
+        """df2 = df.assign(col=1) — вызов метода, не алиас."""
+        v = [x for x in self._visit("df_result = df_clean.assign(col=1)")
+             if x.violation_type == "aliased_no_copy"]
+        assert not v
 
     # --- Чистый код — нет нарушений ---
 
@@ -681,7 +750,7 @@ class TestMutationVisitorUnit:
             per_customer = active.groupby('customer_id')['amount'].sum()
             return float(per_customer.sum())
         """
-        violations = self._parse_and_visit(clean_code)
+        violations = self._visit(clean_code)
         assert not violations, (
             f"Ложные срабатывания на чистом коде метрики:\n"
             + "\n".join(str(v) for v in violations)
@@ -699,17 +768,28 @@ class TestMutationVisitorUnit:
             df_clean['amount'] = df_clean['amount'].fillna(0)
             return df_clean
         """
-        # allow_subscript=True — как для cleaner.py
-        violations = self._parse_and_visit(cleaner_code, allow_subscript=True)
-        # Только inplace и алиасы могут остаться нарушениями
+        violations = self._visit(cleaner_code, allow_subscript=True)
+        # subscript-мутации разрешены в cleaner — только inplace/alias/augassign запрещены
         bad = [
             v for v in violations
-            if v.violation_type in ("inplace_true", "aliased_no_copy", "augmented_assign")
+            if v.violation_type in (
+                "inplace_true", "aliased_no_copy",
+                "augmented_assign", "augmented_assign_attr",
+            )
         ]
         assert not bad, (
             f"Ложные срабатывания на коде cleaner.py:\n"
             + "\n".join(str(v) for v in bad)
         )
+
+    def test_augmented_loc_detected_even_with_allow_subscript(self) -> None:
+        """
+        df.loc[0] += 1 детектируется ДАЖЕ с allow_subscript=True (cleaner.py).
+        += — это всегда мутация, исключений нет (Spec Section 17).
+        """
+        v = [x for x in self._visit("df_clean.loc[0] += 1", allow_subscript=True)
+             if x.violation_type == "augmented_assign_attr"]
+        assert v, "augmented_assign_attr должен детектироваться даже при allow_subscript=True"
 
 
 # ---------------------------------------------------------------------------

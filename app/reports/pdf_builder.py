@@ -381,7 +381,7 @@ def _section_growth(
     """
     Block 2 — Growth метрики (Section 9: Block 2).
     Доступен для всех планов (Section 2 — Metric blocks Basic Blocks 1–2).
-    Formulas: New MRR, Reactivation MRR, Growth Rate, Subscribers (Section 6).
+    Формулы: New MRR, Reactivation MRR, Growth Rate, Subscribers (Section 6).
     """
     story.append(Paragraph("Block 2 — Growth", styles["section_header"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_BORDER))
@@ -419,7 +419,7 @@ def _section_retention(
     """
     Block 3 — Retention (Section 9: Block 3).
     Доступен: Starter и Pro (Section 2 — All 5 blocks).
-    Formulas: Churn Rate, Revenue Churn, NRR (Section 6 / Section 8).
+    Формулы: Churn Rate, Revenue Churn, NRR (Section 6 / Section 8).
     NRR > 200%: показываем предупреждение (Section 6).
     """
     story.append(Paragraph("Block 3 — Retention", styles["section_header"]))
@@ -467,7 +467,7 @@ def _section_health(
     """
     Block 4 — Health (Section 9: Block 4).
     Доступен: Starter и Pro (Section 2).
-    Formulas: LTV, Active/Lost/Existing Subscribers (Section 6).
+    Формулы: LTV, Active/Lost/Existing Subscribers (Section 6).
     LTV cap = 36 месяцев — примечание ОБЯЗАТЕЛЬНО (Section 6).
     """
     story.append(Paragraph("Block 4 — Health", styles["section_header"]))
@@ -938,7 +938,7 @@ def generate_pdf(
         forecast_dict     — dict или None; None → forecast gate (Section 10)
         simulation_dict   — dict или None; PRO only (Section 11)
         plan              — 'free' / 'starter' / 'pro' (Section 2)
-                            ВАЖНО: план должен быть верифицирован через Lemon Squeezy
+                            ВАЖНО: план должен быть верифицирован через Gumroad
                             ДО вызова этой функции — Checkpoint 3 (Section 13)
         company_name      — {'display_name': str, 'filename_safe_name': str} (Section 14)
         currency          — str, например 'USD' (Section 14)

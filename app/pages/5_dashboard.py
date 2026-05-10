@@ -24,13 +24,22 @@ from app.core.forecast import generate_forecast
 from app.core.simulation import run_simulation
 from app.reports.pdf_builder import generate_pdf
 from app.reports.excel_builder import generate_excel
-from app.payments.lemon_squeezy import get_subscription_status
+from app.payments.gumroad import get_subscription_status
 from app.observability.logger import log_error, log_warning, log_info
 
 # Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+
+# ---------------------------------------------------------------------------
+# set_page_config — ПЕРВЫЙ вызов Streamlit, до любых st.* (Section 16 Step 4)
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Dashboard — SubAudit",
+    page_icon="📊",
+    layout="wide",
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -59,7 +68,7 @@ def _fmt_int(value: int | None) -> str:
 
 def _recheck_plan() -> str:
     """
-    Ре-верификация плана у Lemon Squeezy — Section 13, Checkpoint 2.
+    Ре-верификация плана у Gumroad — Section 13, Checkpoint 2.
     Вызывается при загрузке дашборда.
     st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
@@ -72,7 +81,7 @@ def _recheck_plan() -> str:
 def _recheck_plan_for_export() -> str:
     """
     Ре-верификация плана перед любым экспортом — Section 13, Checkpoint 3.
-    Section 2: «Plan MUST be re-verified from Lemon Squeezy BEFORE generating any PDF or Excel».
+    Section 2: «Plan MUST be re-verified from Gumroad BEFORE generating any PDF or Excel».
     st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
     user_email: str | None = st.session_state.get("user_email")
@@ -648,12 +657,6 @@ def main() -> None:
       7. Симуляция — PRO only (Section 11)
       8. Экспорт (Section 2, 13)
     """
-    st.set_page_config(
-        page_title="Dashboard — SubAudit",
-        page_icon="📊",  # отсутствовал — добавлен для консистентности со всеми страницами
-        layout="wide",
-    )
-
     # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
     inject_nav_css()
     render_sidebar()

@@ -88,6 +88,7 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     }
 
     # Работаем с копией — не мутируем входной df_raw (Section 14: иммутабельность)
+    # Исключение: cleaner.py может применять subscript-мутации при сборке df_clean из df_raw
     df = df_raw.copy()
 
     # ------------------------------------------------------------------
@@ -149,7 +150,7 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
                 "Processing blocked. "
                 "(Section 3: Mixed currency — block processing)"
             )
-            
+
     # ------------------------------------------------------------------
     # Шаг 7: Фиксация строк с amount == 0 и amount < 0
     # Section 3:
@@ -249,6 +250,7 @@ def read_csv_with_encoding(file_bytes: bytes) -> pd.DataFrame:
         df = pd.read_csv(io.BytesIO(file_bytes), encoding=encoding)
         return df
     except Exception as exc:
+        # ИСПРАВЛЕНО: сообщение об ошибке на английском (user-facing строки — только английский)
         raise ValueError(
-            f"Не удалось прочитать CSV с кодировкой '{encoding}': {exc}"
+            f"Failed to read CSV with encoding '{encoding}': {exc}"
         ) from exc

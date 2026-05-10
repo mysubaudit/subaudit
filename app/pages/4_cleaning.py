@@ -18,6 +18,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.core.cleaner import clean_data
 from app.core.mapper import apply_mapping
 from app.observability.logger import log_error, log_warning, log_info
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+
+# ---------------------------------------------------------------------------
+# set_page_config — ПЕРВЫЙ вызов Streamlit, до любых st.* (Section 16 Step 3)
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="SubAudit — Data Cleaning",
+    page_icon="🧹",
+    layout="wide",
+)
 
 # ---------------------------------------------------------------------------
 # Константы
@@ -169,6 +179,13 @@ def _display_cleaning_report(cleaning_report: dict) -> None:
 def main() -> None:
     """Точка входа страницы 4_cleaning.py."""
 
+    # Скрываем автонавигацию, показываем сайдбар (Section 4)
+    inject_nav_css()
+    render_sidebar()
+
+    # Явное действие пользователя — обновляем last_activity (Section 14)
+    record_activity()
+
     # Заголовок и описание — на английском (пользователь видит)
     st.title("🧹 Data Cleaning")
     st.write(
@@ -279,19 +296,5 @@ def main() -> None:
 
 # ---------------------------------------------------------------------------
 # Запуск страницы
-# page_title на английском — отображается во вкладке браузера (пользователь видит)
 # ---------------------------------------------------------------------------
-st.set_page_config(
-    page_title="SubAudit — Data Cleaning",
-    page_icon="🧹",
-    layout="wide",
-)
-
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] { display: none !important; }
-[data-testid="stSidebarNavItems"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
-
 main()

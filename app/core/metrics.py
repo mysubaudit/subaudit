@@ -43,7 +43,11 @@ def _compute_time_context(df: pd.DataFrame) -> dict:
       prev_month_status   : 'ok' | 'missing' | 'gap'
     """
     # Только активные строки с amount > 0 (Section 5: "active rows")
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     if active.empty:
         # Нет активных данных вообще — возвращаем заглушку
@@ -53,9 +57,6 @@ def _compute_time_context(df: pd.DataFrame) -> dict:
             "prev_month": None,
             "prev_month_status": "missing",
         }
-
-    # Приводим дату к периоду «месяц»
-    active["_period"] = active["date"].dt.to_period("M")
 
     # Считаем уникальных активных клиентов по месяцам
     monthly_customers = (
@@ -131,8 +132,11 @@ def calculate_mrr(df: pd.DataFrame) -> float:
     if last_month is None:
         return 0.0
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
     month_data = active[active["_period"] == last_month]
 
     if month_data.empty:
@@ -160,8 +164,11 @@ def calculate_arpu(df: pd.DataFrame) -> float:
     if last_month is None:
         return 0.0
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
     month_data = active[active["_period"] == last_month]
 
     unique_count = month_data["customer_id"].nunique()
@@ -196,8 +203,7 @@ def _get_new_customer_ids(df: pd.DataFrame) -> set:
     if last_month is None:
         return set()
 
-    # Переименовано df_copy → data: subscript-мутация на df-переменных запрещена
-    # в чистых функциях (Section 17). .assign() возвращает новый объект — нет side-effects.
+    # .assign() возвращает новый объект — нет side-effects (Section 17)
     data = df.assign(_period=df["date"].dt.to_period("M"))
 
     # Первое появление каждого клиента (по любому статусу)
@@ -220,8 +226,11 @@ def _get_reactivated_customer_ids(df: pd.DataFrame, arpu: float) -> set:
     if last_month is None:
         return set()
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     # Клиенты, активные в last_month
     last_month_customers = set(
@@ -281,8 +290,11 @@ def calculate_new_mrr(df: pd.DataFrame) -> float:
     if not new_ids:
         return 0.0
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
     month_data = active[active["_period"] == last_month]
 
     new_rows = month_data[month_data["customer_id"].isin(new_ids)]
@@ -306,8 +318,11 @@ def calculate_reactivation_mrr(df: pd.DataFrame, arpu: float) -> float:
     if not reactivated_ids:
         return 0.0
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
     month_data = active[active["_period"] == last_month]
 
     react_rows = month_data[month_data["customer_id"].isin(reactivated_ids)]
@@ -327,8 +342,11 @@ def calculate_growth_rate(df: pd.DataFrame) -> float | None:
     last_month = ctx["last_month"]
     prev_month = ctx["prev_month"]
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     def _mrr_for_period(period):
         rows = active[active["_period"] == period]
@@ -369,8 +387,11 @@ def _get_active_customer_ids_for_period(
     df: pd.DataFrame, period: pd.Period
 ) -> set:
     """Возвращает множество активных customer_id для заданного периода."""
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
     return set(active[active["_period"] == period]["customer_id"])
 
 
@@ -418,11 +439,13 @@ def calculate_revenue_churn(df: pd.DataFrame) -> float:
     prev_month = ctx["prev_month"]
     last_month = ctx["last_month"]
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
-    # Переименовано df_copy → data: subscript-мутация на df-переменных запрещена
-    # в чистых функциях (Section 17). .assign() возвращает новый объект — нет side-effects.
+    # .assign() возвращает новый объект — нет side-effects (Section 17)
     data = df.assign(_period=df["date"].dt.to_period("M"))
 
     # Активные клиенты prev_month
@@ -488,8 +511,11 @@ def calculate_nrr(df: pd.DataFrame) -> float | None:
     prev_month = ctx["prev_month"]
     last_month = ctx["last_month"]
 
-    active = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    active["_period"] = active["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    active = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     def _mrr_period(period):
         rows = active[active["_period"] == period]
@@ -545,9 +571,9 @@ def calculate_active_subscribers(df: pd.DataFrame) -> int:
     if last_month is None:
         return 0
 
-    # Переименовано df_copy → data: subscript-мутация на df-переменных запрещена
-    # в чистых функциях (Section 17). .assign() возвращает новый объект — нет side-effects.
+    # .assign() возвращает новый объект — нет side-effects (Section 17)
     data = df.assign(_period=df["date"].dt.to_period("M"))
+
     last_active = data[
         (data["status"] == "active") & (data["_period"] == last_month)
     ]
@@ -612,8 +638,11 @@ def calculate_cohort_table(df: pd.DataFrame) -> pd.DataFrame | None:
     - Retention % = retained_N ÷ cohort_size × 100.
     """
     # Строки для когортного входа: status=='active' AND amount > 0
-    entry_data = df[(df["status"] == "active") & (df["amount"] > 0)].copy()
-    entry_data["_period"] = entry_data["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    entry_data = (
+        df[(df["status"] == "active") & (df["amount"] > 0)]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     if entry_data.empty:
         return None
@@ -634,8 +663,11 @@ def calculate_cohort_table(df: pd.DataFrame) -> pd.DataFrame | None:
     cohorts_to_show = unique_cohorts[-12:]
 
     # Строки для определения удержания: только status=='active' (amount не нужен)
-    retention_data = df[df["status"] == "active"].copy()
-    retention_data["_period"] = retention_data["date"].dt.to_period("M")
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    retention_data = (
+        df[df["status"] == "active"]
+        .assign(_period=lambda x: x["date"].dt.to_period("M"))
+    )
 
     # Присоединяем когорту к retention_data
     retention_data = retention_data.join(cohort_map, on="customer_id", how="left")

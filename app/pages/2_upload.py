@@ -24,6 +24,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 
 # ---------------------------------------------------------------------------
+# set_page_config — ОБЯЗАН быть первым вызовом Streamlit (до inject_nav_css).
+# Streamlit требует этого вызова раньше любых st.* — Section 16 Step 1.
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="SubAudit — Upload Data",
+    page_icon="📂",
+    layout="centered",
+)
+
+# ---------------------------------------------------------------------------
 # Константы (Section 3)
 # ---------------------------------------------------------------------------
 MAX_FILE_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 МБ
@@ -184,13 +194,6 @@ def show_lost_session_guidance() -> None:
 
 def main() -> None:
     """Точка входа страницы 2_upload.py."""
-
-    # page_title на английском — отображается во вкладке браузера (пользователь видит)
-    st.set_page_config(
-        page_title="SubAudit — Upload Data",
-        page_icon="📂",
-        layout="centered",
-    )
 
     # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
     # (без этого Streamlit показывает все страницы из /pages/ всем пользователям)

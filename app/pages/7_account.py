@@ -13,7 +13,7 @@ from datetime import date
 
 # Импортируем вспомогательные модули согласно Section 4
 from app.auth.supabase_auth import send_magic_link, get_user_plan, keep_alive_if_needed
-from app.payments.lemon_squeezy import get_subscription_status
+from app.payments.gumroad import get_subscription_status
 from app.observability.logger import log_info, log_warning
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ def _render_subscription_warning() -> None:
 
 def _refresh_subscription(user_email: str) -> str:
     """
-    Перепроверяем план через Lemon Squeezy.
+    Перепроверяем план через Gumroad.
     Section 13: всегда показываем st.spinner, таймаут 5s, Checkpoint 1/3.
     Section 2: план ДОЛЖЕН быть перепроверён перед PDF/Excel экспортом.
     Здесь — обновление по запросу пользователя.
@@ -249,38 +249,24 @@ def _render_account_info(user_email: str, plan: str) -> None:
 
 def _render_manage_subscription(plan: str) -> None:
     """
-    Кнопка перехода в Lemon Squeezy Customer Portal для управления подпиской.
+    Блок управления подпиской — ссылка на Gumroad для платных пользователей.
     Показывается только платным пользователям (starter / pro).
-    TODO: заменить CUSTOMER_PORTAL_URL на реальный URL после одобрения Lemon Squeezy.
     Текст на английском — пользователь видит этот блок.
     """
     if plan not in ("starter", "pro"):
         return
 
-    # TODO: после одобрения Lemon Squeezy вставить реальный Customer Portal URL сюда
-    CUSTOMER_PORTAL_URL = "#"  # заглушка — заменить на реальный URL
-
     st.divider()
     st.markdown("### ⚙️ Manage Subscription")
     st.markdown(
-        "You can cancel, pause, or change your plan directly "
-        "in the billing portal."
+        "To cancel or change your plan, visit your Gumroad purchase page "
+        "or contact us directly."
     )
-
-    if CUSTOMER_PORTAL_URL == "#":
-        # Заглушка — портал ещё не настроен
-        st.info(
-            "🔧 Subscription management portal is coming soon. "
-            "To make changes, email us at "
-            "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)."
-        )
-    else:
-        # Реальная кнопка — откроется после получения URL от Lemon Squeezy
-        st.link_button(
-            "Open Billing Portal",
-            url=CUSTOMER_PORTAL_URL,
-            type="primary",
-        )
+    st.info(
+        "🔧 To manage your subscription, email us at "
+        "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com) "
+        "with your registered email address."
+    )
 
 
 def _render_feedback_section() -> None:

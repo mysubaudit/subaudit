@@ -12,8 +12,6 @@ Development Order Step 2 (Section 16):
   - Навигация: upload (2) → mapping (3) → cleaning (4)
 """
 
-from __future__ import annotations  # эта строка ОБЯЗАНА быть первой
-
 import sys
 import os
 # Добавляем корень проекта в sys.path для корректных импортов
@@ -26,6 +24,16 @@ from app.core.mapper import (
     OPTIONAL_FIELDS,
     REQUIRED_FIELDS,
     auto_map_columns,
+)
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+
+# ---------------------------------------------------------------------------
+# set_page_config — ПЕРВЫЙ вызов Streamlit, до любых st.* (Section 16 Step 2)
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="SubAudit — Column Mapping",
+    page_icon="🗂",
+    layout="wide",
 )
 
 # ---------------------------------------------------------------------------
@@ -135,6 +143,13 @@ def render_mapping_page() -> None:
     4. Валидируем выбор.
     5. Сохраняем column_mapping в session_state и переходим к шагу 4.
     """
+
+    # Скрываем автонавигацию, показываем сайдбар (Section 4)
+    inject_nav_css()
+    render_sidebar()
+
+    # Явное действие пользователя — обновляем last_activity (Section 14)
+    record_activity()
 
     # Заголовок и подпись — на английском (пользователь видит)
     st.title("🗂 Column Mapping")
@@ -310,20 +325,5 @@ def render_mapping_page() -> None:
 
 # ---------------------------------------------------------------------------
 # Точка входа страницы Streamlit
-# page_title на английском — отображается во вкладке браузера (пользователь видит)
 # ---------------------------------------------------------------------------
-
-st.set_page_config(
-    page_title="SubAudit — Column Mapping",
-    page_icon="🗂",
-    layout="wide",
-)
-
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] { display: none !important; }
-[data-testid="stSidebarNavItems"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
-
 render_mapping_page()

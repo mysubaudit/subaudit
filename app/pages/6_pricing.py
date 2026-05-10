@@ -149,7 +149,7 @@ FEATURE_ROWS: list[tuple[str, str]] = [
 def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None:
     """
     Рендерит карточку одного тарифа.
-    CTA-кнопка ведёт на Lemon Squeezy (Section 13).
+    CTA-кнопка ведёт на Gumroad (Section 13).
     Section 2: план FREE не требует авторизации, STARTER/PRO — требуют.
     Все тексты для пользователя — на английском.
     """
@@ -192,9 +192,9 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
         st.success("✅ Your current plan")
 
         # Кнопка управления подпиской — только для платных планов
-        # TODO: заменить "#" на реальный Customer Portal URL после одобрения Lemon Squeezy
+        # TODO: заменить "#" на реальный Customer Portal URL Gumroad после получения
         if plan_id in ("starter", "pro"):
-            CUSTOMER_PORTAL_URL = "#"  # заглушка — заменить после получения URL
+            CUSTOMER_PORTAL_URL = "#"  # заглушка — заменить после получения URL Gumroad
             if CUSTOMER_PORTAL_URL == "#":
                 st.caption(
                     "To cancel or change your plan — email "
@@ -217,7 +217,7 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
             st.info("Free plan is available without a subscription")
 
     else:
-        # STARTER и PRO — кнопка ведёт на Lemon Squeezy (Section 13)
+        # STARTER и PRO — кнопка ведёт на Gumroad (Section 13)
         # Section 13: «Webhooks — None» — план обновляется на Checkpoint 1/2
         if not is_logged_in:
             # Section 2: STARTER/PRO требуют авторизации
@@ -229,15 +229,20 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
             )
             st.caption("Please sign in via the Account page to subscribe.")
         else:
-            # Авторизован — кнопка перехода на Lemon Squeezy checkout
+            # Авторизован — кнопка перехода на Gumroad checkout
             # URL берётся из st.secrets (Section 19: ключи только в Secrets UI)
-            lemon_url = st.secrets.get(
-                f"LEMON_SQUEEZY_CHECKOUT_{plan_id.upper()}",
-                f"https://subaudit.lemonsqueezy.com/checkout/{plan_id}",
+            # Secrets: GUMROAD_CHECKOUT_STARTER, GUMROAD_CHECKOUT_PRO
+            gumroad_defaults = {
+                "starter": "https://subaudit.gumroad.com/l/starter",
+                "pro":     "https://subaudit.gumroad.com/l/pro",
+            }
+            gumroad_url = st.secrets.get(
+                f"GUMROAD_CHECKOUT_{plan_id.upper()}",
+                gumroad_defaults[plan_id],
             )
             st.link_button(
                 label=plan["cta_label"],
-                url=lemon_url,
+                url=gumroad_url,
                 use_container_width=True,
             )
             st.caption(
@@ -335,7 +340,7 @@ def render_pricing_page() -> None:
     with st.expander("How quickly does a plan change take effect?"):
         # Section 13: post-upgrade delay / Checkpoint логика
         st.markdown(
-            "After payment via Lemon Squeezy, return to the site. "
+            "After payment via Gumroad, return to the site. "
             "Payment processors may take **up to 60 seconds** to process the transaction. "
             "If your plan hasn't updated — wait a moment and refresh the page. "
             "Your status is checked automatically on login and dashboard load."

@@ -18,8 +18,7 @@ import logging
 from typing import Any
 
 import sentry_sdk
-from sentry_sdk import capture_exception, capture_message, push_scope
-from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk import capture_exception, capture_message
 import streamlit as st
 
 
@@ -32,7 +31,7 @@ import streamlit as st
 _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Email-адреса (самый критичный PII в контексте SubAudit)
     (re.compile(r"[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9.\-]+"), "[EMAIL REDACTED]"),
-    # Bearer-токены и API-ключи (например, Lemon Squeezy, Supabase JWT)
+    # Bearer-токены и API-ключи (например, Gumroad, Supabase JWT)
     (re.compile(r"Bearer\s+[A-Za-z0-9\-_\.]+"), "Bearer [TOKEN REDACTED]"),
     # Supabase access_token / refresh_token в JSON-подобных строках
     (re.compile(r'"(?:access_token|refresh_token|token)"\s*:\s*"[^"]+"'), '"token": "[REDACTED]"'),
@@ -103,20 +102,12 @@ def init_sentry() -> None:
     if not dsn:
         # DSN не задан — Sentry не инициализируется, логируем локально
         logging.getLogger("subaudit").warning(
-            "SENTRY_DSN не найден в Streamlit Secrets. Sentry отключён."
+            "SENTRY_DSN not found in Streamlit Secrets. Sentry disabled."
         )
         return
 
-    # Интеграция стандартного logging-модуля с Sentry:
-    # WARNING и выше попадают как breadcrumbs, ERROR и выше — как события
-    logging_integration = LoggingIntegration(
-        level=logging.WARNING,        # breadcrumbs
-        event_level=logging.ERROR,    # полноценные события Sentry
-    )
-
     sentry_sdk.init(
         dsn=dsn,
-        integrations=[logging_integration],
         # Трассировка производительности отключена — не нужна для v1
         traces_sample_rate=0.0,
         # Выключаем автоматическую отправку PII (IP, user-agent и т.д.)
@@ -136,7 +127,6 @@ def log_error(
     exc: Exception | None = None,
     tags: dict[str, str] | None = None,
     extra: dict[str, Any] | None = None,
-    context: str | None = None,
 ) -> None:
     """
     Логирует ошибку уровня ERROR.
@@ -158,7 +148,7 @@ def log_error(
 
     Используется в
     --------------
-    - payments/lemon_squeezy.py: HTTP 401, ошибки без кэша (Section 13)
+    - payments/gumroad.py: HTTP 401, ошибки без кэша (Section 13)
     - auth/supabase_auth.py: критические сбои аутентификации
     """
     clean_message = _scrub_pii(message)
@@ -167,7 +157,8 @@ def log_error(
     # Локальный вывод для отладки в dev-среде
     logging.getLogger("subaudit").error(clean_message)
 
-    with push_scope() as scope:
+    # sentry-sdk 2.x: new_scope() вместо устаревшего push_scope()
+    with sentry_sdk.new_scope() as scope:
         # Устанавливаем теги — Section 13 требует distinct Sentry tags
         if tags:
             for tag_key, tag_value in tags.items():
@@ -189,19 +180,15 @@ def log_warning(
     message: str,
     tags: dict[str, str] | None = None,
     extra: dict[str, Any] | None = None,
-    context: str | None = None,
 ) -> None:
     """
     Логирует предупреждение уровня WARNING.
 
-    Отправляется в Sentry как breadcrumb (не как полноценное событие),
-    если только уровень LoggingIntegration не поднят выше.
-
     Используется в
     --------------
     - auth/supabase_auth.py → keep_alive_if_needed(): "On failure → log_warning().
-      Do NOT raise. Do NOT show UI error." (Section 12)
-    - payments/lemon_squeezy.py: HTTP 429, кэш-фолбэк (Section 13)
+      Do NOT raise. Do NOT show UI error." (Section 11)
+    - payments/gumroad.py: HTTP 429, кэш-фолбэк (Section 13)
 
     Параметры
     ----------
@@ -217,7 +204,8 @@ def log_warning(
 
     logging.getLogger("subaudit").warning(clean_message)
 
-    with push_scope() as scope:
+    # sentry-sdk 2.x: new_scope() вместо устаревшего push_scope()
+    with sentry_sdk.new_scope() as scope:
         if tags:
             for tag_key, tag_value in tags.items():
                 scope.set_tag(tag_key, _scrub_pii(str(tag_value)))
@@ -236,8 +224,8 @@ def log_info(
     """
     Логирует информационное сообщение уровня INFO.
 
-    В Sentry НЕ отправляется (ниже порога event_level=ERROR).
-    Пишется только в стандартный logging-поток (stdout/stderr в Streamlit Cloud).
+    В Sentry НЕ отправляется — пишется только в стандартный logging-поток
+    (stdout/stderr в Streamlit Cloud).
 
     ВАЖНО (Section 19): "All log_info() calls reviewed — no PII,
     no sensitive data." — PII-скраббинг применяется несмотря на то,

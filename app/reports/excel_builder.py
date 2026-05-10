@@ -12,7 +12,7 @@ generate_excel() → bytes
   - PRO:     Excel с формулами + лист Simulation.
 
 Обязательная проверка плана (Section 2, ⚠):
-  Plan MUST be re-verified from Lemon Squeezy BEFORE generating any Excel file.
+  Plan MUST be re-verified from Gumroad BEFORE generating any Excel file.
   Вызывающий код (5_dashboard.py, Checkpoint 3) обязан передать актуальный user_plan.
 
 Forecast gate (Section 10):
@@ -403,7 +403,7 @@ def _build_sheet_metrics_detail(
     ws = wb.create_sheet(title="Metrics Detail")
     ws.sheet_view.showGridLines = False
 
-    headers = ["Metric Key", "Raw Value", "Formatted", "Excel Formula (verificiation)"]
+    headers = ["Metric Key", "Raw Value", "Formatted", "Excel Formula (verification)"]
     ws.cell(row=1, column=1, value="Metrics — Raw Values & Verification Formulas")
     ws.cell(row=1, column=1).font = Font(name="Calibri", size=13, bold=True, color=COLOR_ACCENT)
     ws.merge_cells("A1:D1")
@@ -493,10 +493,14 @@ def _build_sheet_cohort(
         for c_idx, val in enumerate(row_data, start=1):
             cell = ws.cell(row=r, column=c_idx)
             if isinstance(val, float) and not pd.isna(val):
-                cell.value = round(val, 2)
-                cell.number_format = "0.00%"  # retention уже в диапазоне 0–100
+                # Section 7: Retention % = retained_N / cohort_size × 100 → значения 0–100.
+                # openpyxl number_format "0.00%" умножает хранимое значение на 100 при отображении.
+                # Поэтому сохраняем val / 100 (десятичная дробь), чтобы Excel показал корректный %:
+                # 75.5 → 0.755 → отображается как 75.50%  (без деления было бы 7550.00% — БАГ)
+                cell.value = round(val / 100.0, 4)
+                cell.number_format = "0.00%"
                 # RdYlGn: красный ≤ 20%, жёлтый ≈ 50%, зелёный ≥ 80%
-                pct = val / 100.0 if val > 1 else val  # нормализуем
+                pct = val / 100.0 if val > 1 else val  # нормализуем для цвета
                 cell.fill = _rdylgn_fill(pct)
             else:
                 cell.value = val
@@ -872,7 +876,7 @@ def generate_excel(
     Возвращает bytes — содержимое .xlsx файла.
 
     ⚠ ВАЖНО (Section 2):
-      Plan MUST be re-verified from Lemon Squeezy BEFORE вызовом этой функции.
+      Plan MUST be re-verified from Gumroad BEFORE вызовом этой функции.
       Вызывающий код (5_dashboard.py, Checkpoint 3) отвечает за проверку.
 
     ⚠ FREE (Section 2):
