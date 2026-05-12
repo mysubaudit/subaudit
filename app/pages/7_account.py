@@ -286,17 +286,21 @@ def _render_feedback_section() -> None:
         "ratings, suggestions, bug reports, or just a hello. 👋"
     )
 
+    # Инициализируем счётчик для сброса формы
+    if "feedback_form_key" not in st.session_state:
+        st.session_state["feedback_form_key"] = 0
+
     # Звёздочный рейтинг — встроенный виджет Streamlit 1.31+ (Section 15)
     # Проверяем доступность st.feedback (может отсутствовать в старых версиях)
     rating = None
     if hasattr(st, "feedback"):
-        rating = st.feedback("stars", key="user_feedback_stars")
+        rating = st.feedback("stars", key=f"user_feedback_stars_{st.session_state['feedback_form_key']}")
     else:
         # Fallback для старых версий Streamlit
         rating_select = st.selectbox(
             "Rating (optional)",
             options=["", "⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
-            key="user_feedback_stars_fallback",
+            key=f"user_feedback_stars_fallback_{st.session_state['feedback_form_key']}",
         )
         if rating_select:
             rating = len(rating_select) - 1  # Конвертируем в индекс 0-4
@@ -306,7 +310,7 @@ def _render_feedback_section() -> None:
         "Your message (optional)",
         placeholder="Tell us what you love, what's missing, or what could be better...",
         max_chars=1000,
-        key="user_feedback_message",
+        key=f"user_feedback_message_{st.session_state['feedback_form_key']}",
     )
 
     # Показываем сообщение об успешной отправке (если есть флаг)
@@ -337,6 +341,8 @@ def _render_feedback_section() -> None:
             if success:
                 # Устанавливаем флаг успешной отправки
                 st.session_state["feedback_sent"] = True
+                # Инкрементируем счётчик для сброса формы
+                st.session_state["feedback_form_key"] += 1
                 st.rerun()
             else:
                 st.error(
