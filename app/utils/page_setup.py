@@ -44,15 +44,19 @@ _NAV_CSS = """
     /* Убираем отступ, который Streamlit оставляет под скрытой навигацией */
     section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
 
-    /* Скрываем пустой sidebar (когда render_sidebar делает early return) */
-    section[data-testid="stSidebar"]:has(> div:first-child:empty),
-    section[data-testid="stSidebar"]:has(> div:first-child > div:empty) {
+    /* Скрываем пустой sidebar полностью (когда render_sidebar делает early return) */
+    section[data-testid="stSidebar"] {
         display: none !important;
     }
 
-    /* Скрываем кнопку collapsed control когда sidebar пустой */
+    /* Скрываем кнопку открытия/закрытия sidebar (крестик и hamburger) */
     button[data-testid="collapsedControl"] {
         display: none !important;
+    }
+
+    /* Показываем sidebar только если внутри есть контент */
+    section[data-testid="stSidebar"]:has(.sidebar-content) {
+        display: block !important;
     }
 </style>
 """
@@ -110,6 +114,9 @@ def render_sidebar() -> None:
         return
 
     with st.sidebar:
+        # Маркер для CSS — показывает что sidebar имеет контент
+        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
+
         # ── Логотип / заголовок ──────────────────────────────────────────────
         st.markdown("## 📊 SubAudit")
         st.markdown("---")
@@ -164,6 +171,9 @@ def render_sidebar() -> None:
             st.caption(f"Signed in as: {masked}")
 
         st.caption("SubAudit v2.9")
+
+        # Закрываем маркер контента
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
