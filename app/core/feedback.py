@@ -52,7 +52,6 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
                 or st.secrets["supabase"].get("anon_key")
                 or st.secrets["supabase"].get("key")
             )
-            key_source = "supabase.service_role_key or anon_key"
         else:
             # Формат Б: плоские ключи (текущий формат проекта)
             url = st.secrets["SUPABASE_URL"]
@@ -61,11 +60,6 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
                 or st.secrets.get("SUPABASE_ANON_KEY")
                 or st.secrets.get("SUPABASE_KEY")
             )
-            key_source = "SUPABASE_SERVICE_ROLE_KEY or ANON_KEY"
-
-        # DEBUG: показываем какой ключ используется
-        st.write(f"DEBUG: Using key from: {key_source}")
-        st.write(f"DEBUG: Key starts with: {key[:20]}..." if key else "DEBUG: No key found")
 
         if not url or not key:
             raise ValueError("Supabase credentials not found in secrets")
@@ -88,23 +82,13 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
         return True
 
     except Exception as exc:
-        # Временное DEBUG логирование для диагностики
-        import traceback
-        error_details = {
-            "email": user_email,
-            "exc_type": type(exc).__name__,
-            "exc_detail": str(exc),
-            "traceback": traceback.format_exc(),
-        }
-
         log_error(
             "send_feedback_failed",
             exc=exc,
-            extra=error_details,
+            extra={
+                "email": user_email,
+                "exc_type": type(exc).__name__,
+                "exc_detail": str(exc),
+            },
         )
-
-        # Временно показываем ошибку пользователю для диагностики
-        import streamlit as st
-        st.error(f"DEBUG: {type(exc).__name__}: {str(exc)}")
-
         return False
