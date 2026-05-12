@@ -14,8 +14,8 @@ SubAudit — Master Specification Sheet v2.9
 - В тестовой среде (нет secrets) клиент не создаётся при импорте — только при вызове.
 
 CHANGELOG (история изменений):
-- sign_in_with_otp: dict → именованный параметр email=email
-- verify_otp: dict → именованные параметры token_hash=token, type="magiclink"
+- sign_in_with_otp: ИСПРАВЛЕНО — метод принимает словарь {"email": str}, не именованные параметры
+- verify_otp: ИСПРАВЛЕНО — метод принимает словарь {"token_hash": str, "type": str}, не именованные параметры
 - _get_supabase_client: поддержка обоих форматов secrets
   ([supabase] url/anon_key  ИЛИ  SUPABASE_URL/SUPABASE_KEY)
 - get_user_plan: таблица user_plans → subscriptions (реальная таблица)
@@ -131,14 +131,15 @@ def send_magic_link(email: str) -> bool:
         # добавить: https://subaudit.streamlit.app/*
         redirect_url: str | None = st.secrets.get("SUPABASE_REDIRECT_URL") or None
 
-        # Supabase Python SDK v2: sign_in_with_otp принимает именованные параметры
+        # Supabase Python SDK v2: sign_in_with_otp принимает словарь (TypedDict)
+        # SignInWithPasswordlessCredentials = {"email": str, "options": {...}}
         if redirect_url:
-            client.auth.sign_in_with_otp(
-                email=email,
-                options={"email_redirect_to": redirect_url},
-            )
+            client.auth.sign_in_with_otp({
+                "email": email,
+                "options": {"email_redirect_to": redirect_url},
+            })
         else:
-            client.auth.sign_in_with_otp(email=email)
+            client.auth.sign_in_with_otp({"email": email})
 
         # Section 19: email — PII, не логируем через log_info
         log_info("magic_link_sent")
@@ -175,20 +176,21 @@ def verify_magic_link(token: str) -> dict | None:
     Spec ref: Section 12.
     keep_alive_if_needed() вызывается ПОСЛЕ в auth_callback.py — не здесь.
 
-    ИСПРАВЛЕНИЕ:
-        Было:  client.auth.verify_otp({"token_hash": token, "type": "magiclink"})
-        Стало: client.auth.verify_otp(token_hash=token, type="magiclink")
-        Причина: Supabase Python SDK v2 принимает именованные параметры,
-                 словарь позиционно игнорировался → ошибка верификации.
+    ИСПРАВЛЕНИЕ v2.9-fix2:
+        gotrue-py (supabase-py v2.4.6) использует TypedDict для параметров.
+        verify_otp принимает словарь VerifyTokenHashParams, не именованные параметры.
+        Было: client.auth.verify_otp(token_hash=token, type="magiclink")
+        Стало: client.auth.verify_otp({"token_hash": token, "type": "magiclink"})
     """
     try:
         client: Client = _client()
 
-        # SDK v2: именованные параметры, не словарь
-        response = client.auth.verify_otp(
-            token_hash=token,
-            type="magiclink",
-        )
+        # SDK v2: verify_otp принимает словарь (VerifyTokenHashParams)
+        # VerifyTokenHashParams = {"token_hash": str, "type": EmailOtpType}
+        response = client.auth.verify_otp({
+            "token_hash": token,
+            "type": "magiclink",
+        })
 
         if response and response.user:
             user_dict = {
