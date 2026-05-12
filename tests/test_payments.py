@@ -61,6 +61,58 @@ class FakeResponse:
 # Вспомогательные функции — патчат app.payments.gumroad (не lemon_squeezy!)
 # ---------------------------------------------------------------------------
 
+def _make_gumroad_response(plan: str, product_ids: dict = None) -> dict:
+    """
+    Создаёт правильный формат ответа Gumroad API.
+
+    Gumroad API возвращает:
+    {
+      "success": true,
+      "sales": [
+        {
+          "product_id": "...",
+          "refunded": false,
+          "chargedback": false
+        }
+      ]
+    }
+
+    Args:
+        plan: 'free', 'starter', или 'pro'
+        product_ids: dict с ключами 'starter' и 'pro' (по умолчанию "starter" и "pro")
+    """
+    if product_ids is None:
+        product_ids = {"starter": "starter", "pro": "pro"}
+
+    if plan == "free":
+        # Нет активных продаж
+        return {"success": True, "sales": []}
+    elif plan == "starter":
+        return {
+            "success": True,
+            "sales": [
+                {
+                    "product_id": product_ids["starter"],
+                    "refunded": False,
+                    "chargedback": False,
+                }
+            ],
+        }
+    elif plan == "pro":
+        return {
+            "success": True,
+            "sales": [
+                {
+                    "product_id": product_ids["pro"],
+                    "refunded": False,
+                    "chargedback": False,
+                }
+            ],
+        }
+    else:
+        raise ValueError(f"Unknown plan: {plan}")
+
+
 def _mock_spinner(mocker):
     """
     Возвращает мок st.spinner, пригодный как контекстный менеджер.
@@ -116,6 +168,7 @@ def session_state_with_cached_pro_plan():
     return {
         "user_email": "pro_user@example.com",
         "user_plan": "pro",
+        "_gumroad_cached_plan": "pro",
         "subscription_warning": False,
     }
 
@@ -157,7 +210,7 @@ class TestSuccessClearsWarning:
                  "subscription_warning": True,
                  "subscription_warning_reason": "api_error"}
 
-        mock_response = FakeResponse(200, {"plan": "starter"})
+        mock_response = FakeResponse(200, _make_gumroad_response("starter"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -182,7 +235,7 @@ class TestSuccessClearsWarning:
                  "subscription_warning": True,
                  "subscription_warning_reason": "no_cache"}
 
-        mock_response = FakeResponse(200, {"plan": "pro"})
+        mock_response = FakeResponse(200, _make_gumroad_response("pro"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -204,7 +257,7 @@ class TestSuccessClearsWarning:
         """
         state = {**clean_session_state, "user_plan": "free"}
 
-        mock_response = FakeResponse(200, {"plan": "pro"})
+        mock_response = FakeResponse(200, _make_gumroad_response("pro"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -224,7 +277,7 @@ class TestSuccessClearsWarning:
         При любом обращении к API должен отображаться st.spinner.
         Section 13: «Always st.spinner("Verifying subscription...") — never silent»
         """
-        mock_response = FakeResponse(200, {"plan": "starter"})
+        mock_response = FakeResponse(200, _make_gumroad_response("starter"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state",
@@ -533,7 +586,7 @@ class TestDowngradeUpdatesSession:
         """
         state = session_state_starter_then_free
 
-        mock_response = FakeResponse(200, {"plan": "free"})
+        mock_response = FakeResponse(200, _make_gumroad_response("free"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -560,7 +613,7 @@ class TestDowngradeUpdatesSession:
             "subscription_warning": False,
         }
 
-        mock_response = FakeResponse(200, {"plan": "starter"})
+        mock_response = FakeResponse(200, _make_gumroad_response("starter"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -586,7 +639,7 @@ class TestDowngradeUpdatesSession:
             "subscription_warning_reason": "api_error",
         }
 
-        mock_response = FakeResponse(200, {"plan": "starter"})
+        mock_response = FakeResponse(200, _make_gumroad_response("starter"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
@@ -700,7 +753,7 @@ class TestPostUpgradeMessageShown:
         При успешном HTTP 200 пост-апгрейд-сообщение НЕ отображается.
         Section 13: «Success: subscription_warning=False»
         """
-        mock_response = FakeResponse(200, {"plan": "pro"})
+        mock_response = FakeResponse(200, _make_gumroad_response("pro"))
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state",
