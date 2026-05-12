@@ -330,11 +330,7 @@ def _render_feedback_section() -> None:
 
             if success:
                 st.success("✅ Thank you for your feedback! We appreciate it.")
-                # Очищаем поля после успешной отправки
-                st.session_state["user_feedback_message"] = ""
-                if "user_feedback_stars" in st.session_state:
-                    del st.session_state["user_feedback_stars"]
-                # Небольшая пауза для показа сообщения
+                # Перезагружаем страницу (форма очистится автоматически)
                 import time
                 time.sleep(1.5)
                 st.rerun()
