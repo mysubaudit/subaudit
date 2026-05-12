@@ -43,17 +43,26 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
         import streamlit as st
         from supabase import create_client, Client
 
-        # Получаем credentials из secrets
+        # Получаем credentials из secrets (поддержка обоих форматов)
         if "supabase" in st.secrets:
+            # Формат А: секция [supabase]
             url = st.secrets["supabase"]["url"]
-            # Используем service_role_key для обхода RLS
-            key = st.secrets["supabase"].get("service_role_key")
-            if not key:
-                # Fallback на anon_key если service_role_key не настроен
-                key = st.secrets["supabase"].get("anon_key") or st.secrets["supabase"].get("key")
+            key = (
+                st.secrets["supabase"].get("service_role_key")
+                or st.secrets["supabase"].get("anon_key")
+                or st.secrets["supabase"].get("key")
+            )
         else:
+            # Формат Б: плоские ключи (текущий формат проекта)
             url = st.secrets["SUPABASE_URL"]
-            key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") or st.secrets.get("SUPABASE_KEY")
+            key = (
+                st.secrets.get("SUPABASE_SERVICE_ROLE_KEY")
+                or st.secrets.get("SUPABASE_ANON_KEY")
+                or st.secrets.get("SUPABASE_KEY")
+            )
+
+        if not url or not key:
+            raise ValueError("Supabase credentials not found in secrets")
 
         # Создаём отдельный клиент для feedback (не используем глобальный)
         client: Client = create_client(url, key)
