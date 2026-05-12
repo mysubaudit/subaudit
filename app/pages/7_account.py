@@ -344,6 +344,35 @@ def _render_feedback_section() -> None:
                     "biz.sardorbek@gmail.com"
                 )
 
+    # История отзывов пользователя
+    st.divider()
+    st.markdown("### 📋 Your Feedback History")
+
+    from app.core.feedback import get_user_feedback_history
+
+    user_email = st.session_state.get("user_email")
+    if user_email:
+        feedback_history = get_user_feedback_history(user_email)
+
+        if feedback_history:
+            for idx, item in enumerate(feedback_history, 1):
+                with st.expander(f"Feedback #{idx} — {item.get('created_at', 'N/A')[:10]}"):
+                    # Рейтинг
+                    if item.get("rating"):
+                        st.markdown(f"**Rating:** {'⭐' * item['rating']}")
+
+                    # Сообщение
+                    if item.get("message"):
+                        st.markdown(f"**Message:**")
+                        st.text(item["message"])
+
+                    # Дата
+                    st.caption(f"Sent on: {item.get('created_at', 'N/A')}")
+        else:
+            st.info("You haven't sent any feedback yet. Share your thoughts above! 👆")
+    else:
+        st.warning("Please log in to view your feedback history.")
+
 
 def _render_upgrade_cta(plan: str) -> None:
     """
