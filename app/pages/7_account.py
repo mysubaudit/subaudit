@@ -309,25 +309,37 @@ def _render_feedback_section() -> None:
         key="user_feedback_message",
     )
 
-    # Формируем mailto ссылку с предзаполненным телом письма
-    # Пользователь кликает — открывается его почтовый клиент с готовым письмом
-    stars_text = ""
-    if rating is not None:
-        # rating возвращает 0-4 (индекс), переводим в 1-5 звёзд
-        stars_count = rating + 1
-        stars_text = f"Rating: {'⭐' * stars_count} ({stars_count}/5)%0A"
+    # Кнопка отправки — сохраняет отзыв в Supabase
+    if st.button("📤 Send Feedback", type="primary", use_container_width=True):
+        # Валидация: хотя бы рейтинг или сообщение должны быть заполнены
+        if rating is None and not message.strip():
+            st.warning("⚠️ Please provide a rating or message before sending.")
+        else:
+            # Импортируем функцию отправки отзыва
+            from app.core.feedback import send_feedback
 
-    msg_text = message.replace("\n", "%0A").replace(" ", "%20") if message else ""
-    subject = "SubAudit%20Feedback"
-    body = f"{stars_text}{msg_text}"
+            # Конвертируем rating из индекса 0-4 в значение 1-5
+            rating_value = (rating + 1) if rating is not None else None
 
-    st.markdown(
-        f"[📧 Send feedback to biz.sardorbek@gmail.com]"
-        f"(mailto:biz.sardorbek@gmail.com?subject={subject}&body={body})",
-    )
-    st.caption(
-        "Clicking the link opens your email client with your message pre-filled."
-    )
+            # Отправляем отзыв
+            user_email = st.session_state.get("user_email", "unknown@example.com")
+            success = send_feedback(user_email, rating_value, message)
+
+            if success:
+                st.success("✅ Thank you for your feedback! We appreciate it.")
+                # Очищаем поля после успешной отправки
+                st.session_state["user_feedback_message"] = ""
+                if "user_feedback_stars" in st.session_state:
+                    del st.session_state["user_feedback_stars"]
+                # Небольшая пауза для показа сообщения
+                import time
+                time.sleep(1.5)
+                st.rerun()
+            else:
+                st.error(
+                    "❌ Failed to send feedback. Please try again or email us at "
+                    "biz.sardorbek@gmail.com"
+                )
 
 
 def _render_upgrade_cta(plan: str) -> None:
