@@ -309,6 +309,12 @@ def _render_feedback_section() -> None:
         key="user_feedback_message",
     )
 
+    # Показываем сообщение об успешной отправке (если есть флаг)
+    if st.session_state.get("feedback_sent"):
+        st.success("✅ Thank you for your feedback! We appreciate it.")
+        # Сбрасываем флаг
+        st.session_state["feedback_sent"] = False
+
     # Кнопка отправки — сохраняет отзыв в Supabase
     if st.button("📤 Send Feedback", type="primary", use_container_width=True):
         # Проверка авторизации — отзыв могут оставить только залогиненные пользователи
@@ -329,10 +335,8 @@ def _render_feedback_section() -> None:
             success = send_feedback(user_email, rating_value, message)
 
             if success:
-                st.success("✅ Thank you for your feedback! We appreciate it.")
-                # Перезагружаем страницу (форма очистится автоматически)
-                import time
-                time.sleep(1.5)
+                # Устанавливаем флаг успешной отправки
+                st.session_state["feedback_sent"] = True
                 st.rerun()
             else:
                 st.error(
