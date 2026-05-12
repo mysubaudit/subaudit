@@ -355,7 +355,11 @@ def _render_feedback_section() -> None:
         feedback_history = get_user_feedback_history(user_email)
 
         if feedback_history:
-            for idx, item in enumerate(feedback_history, 1):
+            # Показываем последние 5 отзывов по умолчанию
+            show_all = st.session_state.get("show_all_feedback", False)
+            display_count = len(feedback_history) if show_all else min(5, len(feedback_history))
+
+            for idx, item in enumerate(feedback_history[:display_count], 1):
                 with st.expander(f"Feedback #{idx} — {item.get('created_at', 'N/A')[:10]}"):
                     # Рейтинг
                     if item.get("rating"):
@@ -368,6 +372,16 @@ def _render_feedback_section() -> None:
 
                     # Дата
                     st.caption(f"Sent on: {item.get('created_at', 'N/A')}")
+
+            # Кнопка "Show more" если отзывов больше 5
+            if len(feedback_history) > 5 and not show_all:
+                if st.button(f"Show all {len(feedback_history)} feedback items"):
+                    st.session_state["show_all_feedback"] = True
+                    st.rerun()
+            elif show_all:
+                if st.button("Show less"):
+                    st.session_state["show_all_feedback"] = False
+                    st.rerun()
         else:
             st.info("You haven't sent any feedback yet. Share your thoughts above! 👆")
     else:
