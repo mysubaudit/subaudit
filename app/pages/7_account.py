@@ -311,8 +311,12 @@ def _render_feedback_section() -> None:
 
     # Кнопка отправки — сохраняет отзыв в Supabase
     if st.button("📤 Send Feedback", type="primary", use_container_width=True):
+        # Проверка авторизации — отзыв могут оставить только залогиненные пользователи
+        user_email = st.session_state.get("user_email")
+        if not user_email:
+            st.warning("⚠️ Please log in to send feedback.")
         # Валидация: хотя бы рейтинг или сообщение должны быть заполнены
-        if rating is None and not message.strip():
+        elif rating is None and not message.strip():
             st.warning("⚠️ Please provide a rating or message before sending.")
         else:
             # Импортируем функцию отправки отзыва
@@ -322,7 +326,6 @@ def _render_feedback_section() -> None:
             rating_value = (rating + 1) if rating is not None else None
 
             # Отправляем отзыв
-            user_email = st.session_state.get("user_email", "unknown@example.com")
             success = send_feedback(user_email, rating_value, message)
 
             if success:

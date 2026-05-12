@@ -34,10 +34,29 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
         return False
 
     try:
-        # Получаем клиент Supabase через модульный атрибут
-        # (тесты могут мокировать app.auth.supabase_auth.supabase)
-        from app.auth.supabase_auth import _client
-        client: Client = _client()
+        # Для операций с feedback используем service_role_key (обходит RLS)
+        # Это безопасно, потому что:
+        # 1. Проверка авторизации уже сделана в 7_account.py
+        # 2. Email берётся из session_state (установлен при входе)
+        # 3. Пользователь не может подделать чужой email
+
+        import streamlit as st
+        from supabase import create_client, Client
+
+        # Получаем credentials из secrets
+        if "supabase" in st.secrets:
+            url = st.secrets["supabase"]["url"]
+            # Используем service_role_key для обхода RLS
+            key = st.secrets["supabase"].get("service_role_key")
+            if not key:
+                # Fallback на anon_key если service_role_key не настроен
+                key = st.secrets["supabase"].get("anon_key") or st.secrets["supabase"].get("key")
+        else:
+            url = st.secrets["SUPABASE_URL"]
+            key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") or st.secrets.get("SUPABASE_KEY")
+
+        # Создаём отдельный клиент для feedback (не используем глобальный)
+        client: Client = create_client(url, key)
 
         # Подготовка данных для вставки
         feedback_data = {
