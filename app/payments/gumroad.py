@@ -1,202 +1,302 @@
 """
 app/payments/gumroad.py
-Замена lemon_squeezy.py — платёжная система Gumroad.
-Все требования по Section 13 спецификации v2.9 сохранены без изменений.
+=======================
+Интеграция с Gumroad для проверки статуса подписки.
+
+Заменяет lemon_squeezy.py (Section 13 спецификации).
+Причина замены: Lemon Squeezy отказал в регистрации (см. CONTEXT_FOR_NEW_CHAT.md).
+
+Строго соответствует Master Specification Sheet v2.9:
+  - Section 13 : все правила работы с платёжным провайдером
+  - Section 4  : место файла (app/payments/gumroad.py)
+  - Section 14 : ключи session_state (subscription_warning, subscription_warning_reason)
+  - Section 19 : секреты только в Streamlit Cloud, не в коде
+
+Публичный интерфейс (тот же что у lemon_squeezy.py):
+  get_subscription_status(user_email: str) → 'free' | 'starter' | 'pro'
+
+Секреты (Streamlit Cloud Secrets / .env):
+  GUMROAD_ACCESS_TOKEN      — токен доступа к Gumroad API
+  GUMROAD_STARTER_PRODUCT_ID — ID продукта Starter (например "starter")
+  GUMROAD_PRO_PRODUCT_ID    — ID продукта Pro (например "pro")
 """
+
+from __future__ import annotations
 
 import time
 import streamlit as st
-import requests
-import sentry_sdk
 
-from app.observability.logger import log_error, log_warning, log_info
+try:
+    import requests
+except ImportError:
+    requests = None  # type: ignore[assignment]
+
+try:
+    import sentry_sdk
+except ImportError:
+    sentry_sdk = None  # type: ignore[assignment]
+
+try:
+    from app.observability.logger import log_error, log_warning, log_info
+except ImportError:
+    # Fallback-заглушки на случай нестандартного sys.path в тестах
+    def log_error(msg: str, **kwargs) -> None:  # type: ignore[misc]
+        pass
+
+    def log_warning(msg: str, **kwargs) -> None:  # type: ignore[misc]
+        pass
+
+    def log_info(msg: str, **kwargs) -> None:  # type: ignore[misc]
+        pass
+
 
 # ---------------------------------------------------------------------------
-# Константы — секреты хранятся в Streamlit Secrets (Section 19)
+# Константы
 # ---------------------------------------------------------------------------
-_ACCESS_TOKEN = st.secrets["GUMROAD_ACCESS_TOKEN"]
-_STARTER_PRODUCT_ID = st.secrets["GUMROAD_STARTER_PRODUCT_ID"]  # "starter"
-_PRO_PRODUCT_ID = st.secrets["GUMROAD_PRO_PRODUCT_ID"]          # "pro"
 
-# Базовый URL Gumroad API
-_GUMROAD_API = "https://api.gumroad.com/v2"
+# Section 13: timeout = 5 секунд
+_REQUEST_TIMEOUT: int = 5
 
-# Таймаут запроса — Section 13
-_TIMEOUT = 5  # секунд
+# Gumroad API: базовый URL для проверки продажи по email
+_GUMROAD_SALES_URL: str = "https://api.gumroad.com/v2/sales"
+
+# Section 14: ключи session_state для предупреждений о подписке
+_SS_WARNING: str = "subscription_warning"
+_SS_WARNING_REASON: str = "subscription_warning_reason"
+_SS_CACHED_PLAN: str = "_gumroad_cached_plan"
+_SS_USER_PLAN: str = "user_plan"
 
 
-def get_subscription_status(user_email: str) -> str:
+# ---------------------------------------------------------------------------
+# Вспомогательные функции
+# ---------------------------------------------------------------------------
+
+def _get_secrets() -> tuple[str, str, str]:
     """
-    Возвращает план пользователя: 'free' / 'starter' / 'pro'.
+    Читает секреты из Streamlit Secrets (Section 19).
 
-    Логика по Section 13:
-    - Всегда показывать st.spinner("Verifying subscription...")
-    - HTTP 429 → ждать 1с, повторить 1 раз
-    - HTTP 401 → Sentry, вернуть 'free', subscription_warning=True
-    - Ошибка без кэша → 'free', reason='no_cache'
-    - Ошибка с кэшем → кэш, reason='api_error'
-    - Успех → очистить subscription_warning
-    - Re-verify перед PDF/Excel (Section 2)
+    Возвращает (access_token, starter_product_id, pro_product_id).
+    При отсутствии ключей возвращает пустые строки.
     """
-    with st.spinner("Verifying subscription..."):
-        plan = _fetch_plan(user_email)
-    return plan
+    try:
+        token = st.secrets.get("GUMROAD_ACCESS_TOKEN", "")
+        starter = st.secrets.get("GUMROAD_STARTER_PRODUCT_ID", "starter")
+        pro = st.secrets.get("GUMROAD_PRO_PRODUCT_ID", "pro")
+    except Exception:
+        # В тестовом окружении st.secrets может быть недоступен
+        token = ""
+        starter = "starter"
+        pro = "pro"
+    return token, starter, pro
 
 
-def _fetch_plan(user_email: str) -> str:
-    """Внутренняя логика получения плана с retry и обработкой ошибок."""
+def _set_warning(reason: str) -> None:
+    """
+    Устанавливает флаги предупреждения подписки в session_state.
 
-    # Сначала проверяем PRO, затем STARTER
-    for product_id, plan_name in [
-        (_PRO_PRODUCT_ID, "pro"),
-        (_STARTER_PRODUCT_ID, "starter"),
-    ]:
-        result = _check_license(user_email, product_id, plan_name)
-        if result == "found":
-            # Успех — очищаем предупреждения (Section 13: Success)
-            st.session_state["subscription_warning"] = False
-            st.session_state.pop("subscription_warning_reason", None)
-            st.session_state["user_plan"] = plan_name
-            log_info(f"Plan verified: {plan_name}")
-            return plan_name
-        if result == "error":
-            # Ошибка уже обработана внутри _check_license
-            return _fallback_plan()
+    Section 13: subscription_warning=True, reason='no_cache' или 'api_error'.
+    Section 14: ключи subscription_warning и subscription_warning_reason.
+    """
+    st.session_state[_SS_WARNING] = True
+    st.session_state[_SS_WARNING_REASON] = reason
 
-    # Ни один продукт не найден — пользователь на бесплатном плане
-    st.session_state["subscription_warning"] = False
-    st.session_state.pop("subscription_warning_reason", None)
-    st.session_state["user_plan"] = "free"
+
+def _clear_warning() -> None:
+    """
+    Сбрасывает флаги предупреждения при успешной проверке.
+
+    Section 13: "Success: subscription_warning=False. Pop subscription_warning_reason."
+    """
+    st.session_state[_SS_WARNING] = False
+    # Pop — удаляем ключ reason при успехе (Section 13)
+    st.session_state.pop(_SS_WARNING_REASON, None)
+
+
+def _log_sentry(reason: str) -> None:
+    """
+    Логирует событие в Sentry с тегом reason (Section 13).
+
+    Section 13: "distinct Sentry tags", reason='no_cache' или 'api_error'.
+    """
+    if sentry_sdk is not None:
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("reason", reason)
+            sentry_sdk.capture_message(
+                f"Gumroad subscription check failed: reason={reason}",
+                level="warning",
+            )
+
+
+def _determine_plan_from_sales(
+    email: str,
+    token: str,
+    starter_id: str,
+    pro_id: str,
+) -> str | None:
+    """
+    Выполняет HTTP-запрос к Gumroad API и определяет план пользователя.
+
+    Возвращает 'pro', 'starter', 'free' при успехе.
+    Возвращает None при сетевой ошибке или неожиданном ответе.
+
+    Section 13:
+      - timeout=5
+      - HTTP 401 → log Sentry, return 'free', warning=True
+      - HTTP 429 → retry один раз (не вызывается отсюда — обрабатывается выше)
+    """
+    if requests is None:
+        return None
+
+    # Gumroad API: проверяем продажи по email покупателя
+    params = {
+        "access_token": token,
+        "email": email,
+    }
+
+    # Section 13: timeout = 5 секунд (константа _REQUEST_TIMEOUT)
+    response = requests.get(_GUMROAD_SALES_URL, params=params, timeout=_REQUEST_TIMEOUT)
+
+    if response.status_code == 401:
+        # Section 13: HTTP 401 → Log Sentry, return 'free', warning=True
+        _log_sentry("no_cache")
+        log_error("Gumroad API: HTTP 401 Unauthorized", email=email)
+        return "401"  # Специальный маркер для обработки в вызывающем коде
+
+    if response.status_code == 429:
+        # Сигнализируем вызывающему коду о необходимости retry
+        return "429"
+
+    if response.status_code != 200:
+        log_warning(f"Gumroad API: unexpected status {response.status_code}")
+        return None
+
+    try:
+        data = response.json()
+    except Exception:
+        log_warning("Gumroad API: failed to parse JSON response")
+        return None
+
+    if not data.get("success", False):
+        log_warning("Gumroad API: success=false in response")
+        return None
+
+    # Проверяем продажи: ищем активную подписку Pro или Starter
+    sales = data.get("sales", [])
+    has_pro = False
+    has_starter = False
+
+    for sale in sales:
+        product_id = sale.get("product_id", "")
+        # Проверяем что продажа не возвращена/отменена
+        refunded = sale.get("refunded", False)
+        chargedback = sale.get("chargedback", False)
+        if refunded or chargedback:
+            continue
+        if product_id == pro_id:
+            has_pro = True
+        elif product_id == starter_id:
+            has_starter = True
+
+    if has_pro:
+        return "pro"
+    if has_starter:
+        return "starter"
     return "free"
 
 
-def _check_license(user_email: str, product_id: str, plan_name: str) -> str:
-    """
-    Проверяет наличие активной лицензии Gumroad для email + product_id.
-    Возвращает: 'found' | 'not_found' | 'error'
-
-    Gumroad API: GET /v2/sales — фильтрация по email и product_permalink.
-    """
-    url = f"{_GUMROAD_API}/sales"
-    headers = {"Authorization": f"Bearer {_ACCESS_TOKEN}"}
-    params = {
-        "email": user_email,
-        "product_permalink": product_id,
-    }
-
-    try:
-        response = _get_with_retry(url, headers=headers, params=params)
-    except _RetryExhausted:
-        # HTTP 429 — retry исчерпан (Section 13)
-        log_warning(f"Gumroad 429 retry exhausted for {plan_name}")
-        st.session_state["subscription_warning"] = True
-        return "error"
-    except _AuthError:
-        # HTTP 401 — логируем в Sentry с тегами (Section 13)
-        with sentry_sdk.push_scope() as scope:
-            scope.set_tag("reason", "no_cache")
-            scope.set_tag("plan_checked", plan_name)
-            sentry_sdk.capture_message("Gumroad API 401 Unauthorized", level="error")
-        log_error(f"Gumroad 401 for {plan_name}")
-        st.session_state["subscription_warning"] = True
-        st.session_state["subscription_warning_reason"] = "no_cache"
-        return "error"
-    except Exception as exc:
-        # Прочие ошибки
-        log_error(f"Gumroad API error for {plan_name}: {exc}")
-        st.session_state["subscription_warning"] = True
-        return "error"
-
-    # Разбираем ответ
-    if response.status_code == 200:
-        data = response.json()
-        sales = data.get("sales", [])
-        # Ищем активную продажу (подписку) для этого email
-        for sale in sales:
-            if _is_active_sale(sale, user_email):
-                return "found"
-        return "not_found"
-
-    # Неожиданный статус
-    log_warning(f"Gumroad unexpected status {response.status_code} for {plan_name}")
-    return "not_found"
-
-
-def _is_active_sale(sale: dict, user_email: str) -> bool:
-    """
-    Проверяет, является ли продажа активной подпиской для данного email.
-    Gumroad возвращает email покупателя в поле 'email'.
-    Подписка считается активной если: не отменена и не истекла.
-    """
-    # Проверяем email покупателя
-    if sale.get("email", "").lower() != user_email.lower():
-        return False
-
-    # Подписка отменена — не считается активной
-    if sale.get("subscription_cancelled_at") is not None:
-        return False
-
-    # Подписка истекла — не считается активной
-    if sale.get("subscription_ended_at") is not None:
-        return False
-
-    return True
-
-
-def _get_with_retry(url: str, headers: dict, params: dict) -> requests.Response:
-    """
-    GET-запрос с единственным retry при HTTP 429 (Section 13).
-    Raises: _RetryExhausted, _AuthError, requests.RequestException
-    """
-    response = requests.get(url, headers=headers, params=params, timeout=_TIMEOUT)
-
-    if response.status_code == 429:
-        # Ждём 1 секунду и повторяем один раз (Section 13)
-        time.sleep(1)
-        response = requests.get(url, headers=headers, params=params, timeout=_TIMEOUT)
-        if response.status_code == 429:
-            raise _RetryExhausted()
-
-    if response.status_code == 401:
-        raise _AuthError()
-
-    return response
-
-
-def _fallback_plan() -> str:
-    """
-    Возвращает кэшированный план или 'free' при ошибке API (Section 13).
-    Устанавливает subscription_warning с reason.
-    """
-    cached = st.session_state.get("user_plan")
-
-    if cached and cached in ("starter", "pro"):
-        # Есть кэш — возвращаем его с предупреждением
-        with sentry_sdk.push_scope() as scope:
-            scope.set_tag("reason", "api_error")
-            sentry_sdk.capture_message("Gumroad API error — using cached plan", level="warning")
-        st.session_state["subscription_warning"] = True
-        st.session_state["subscription_warning_reason"] = "api_error"
-        log_warning(f"Gumroad API error — fallback to cached plan: {cached}")
-        return cached
-    else:
-        # Нет кэша — возвращаем 'free'
-        with sentry_sdk.push_scope() as scope:
-            scope.set_tag("reason", "no_cache")
-            sentry_sdk.capture_message("Gumroad API error — no cache, returning free", level="warning")
-        st.session_state["subscription_warning"] = True
-        st.session_state["subscription_warning_reason"] = "no_cache"
-        log_warning("Gumroad API error — no cache, returning free")
-        return "free"
-
-
 # ---------------------------------------------------------------------------
-# Внутренние исключения
+# Публичная функция (Section 13, Section 4)
 # ---------------------------------------------------------------------------
 
-class _RetryExhausted(Exception):
-    """HTTP 429 — retry исчерпан."""
+def get_subscription_status(user_email: str) -> str:
+    """
+    Проверяет статус подписки пользователя через Gumroad API.
 
+    Возвращает: 'free' | 'starter' | 'pro'
 
-class _AuthError(Exception):
-    """HTTP 401 — неверный токен."""
+    Section 13 — поведение при ошибках:
+      HTTP 401  → Log Sentry, return 'free', subscription_warning=True, reason='no_cache'
+      HTTP 429  → wait 1s, retry once; если опять 429 → cached or 'free', warning=True
+      Error + no cache → return 'free', warning=True, reason='no_cache', Sentry no_cache
+      Error + cache    → return cached, warning=True, reason='api_error', Sentry api_error
+      Success          → warning=False, pop reason, update user_plan, update cache
+
+    Section 13: Always st.spinner("Verifying subscription...") — never silent
+    Section 13: requests.get(..., timeout=5)
+    Section 13: Post-upgrade message при subscription_warning сразу после апгрейда
+    """
+    token, starter_id, pro_id = _get_secrets()
+
+    # Получаем кешированный план из session_state (Section 13)
+    cached_plan: str | None = st.session_state.get(_SS_CACHED_PLAN, None)
+
+    # Section 13: всегда показываем спиннер
+    with st.spinner("Verifying subscription..."):
+        try:
+            plan_or_code = _determine_plan_from_sales(
+                user_email, token, starter_id, pro_id
+            )
+
+            # --- Обработка HTTP 429: wait 1s, retry once (Section 13) ---
+            if plan_or_code == "429":
+                time.sleep(1)  # Section 13: "Wait 1s, retry once"
+                try:
+                    plan_or_code = _determine_plan_from_sales(
+                        user_email, token, starter_id, pro_id
+                    )
+                except Exception:
+                    plan_or_code = None
+
+                if plan_or_code == "429" or plan_or_code is None:
+                    # Section 13: "Still failing → cached or 'free'. Set subscription_warning=True."
+                    _set_warning("no_cache" if cached_plan is None else "api_error")
+                    _log_sentry("no_cache" if cached_plan is None else "api_error")
+                    return cached_plan if cached_plan is not None else "free"
+
+            # --- Обработка HTTP 401 (Section 13) ---
+            if plan_or_code == "401":
+                _set_warning("no_cache")
+                _log_sentry("no_cache")
+                return "free"
+
+            # --- None означает сетевую/parse ошибку ---
+            if plan_or_code is None:
+                if cached_plan is not None:
+                    # Section 13: "Error — cache present → Return cached plan, warning=True, reason='api_error'"
+                    _set_warning("api_error")
+                    _log_sentry("api_error")
+                    return cached_plan
+                else:
+                    # Section 13: "Error — no cache → Return 'free', warning=True, reason='no_cache'"
+                    _set_warning("no_cache")
+                    _log_sentry("no_cache")
+                    return "free"
+
+            # --- Успешный ответ (Section 13) ---
+            plan: str = plan_or_code  # 'free' | 'starter' | 'pro'
+
+            # Section 13: "Success: subscription_warning=False. Pop subscription_warning_reason."
+            _clear_warning()
+
+            # Section 13: "Update user_plan"
+            st.session_state[_SS_USER_PLAN] = plan
+
+            # Обновляем кеш для будущих запросов при ошибках
+            st.session_state[_SS_CACHED_PLAN] = plan
+
+            return plan
+
+        except Exception as exc:
+            # Непредвиденная ошибка (сеть, timeout и т.д.)
+            log_error(f"Gumroad get_subscription_status exception: {exc}")
+
+            if cached_plan is not None:
+                # Section 13: cache present → return cached, reason='api_error'
+                _set_warning("api_error")
+                _log_sentry("api_error")
+                return cached_plan
+            else:
+                # Section 13: no cache → return 'free', reason='no_cache'
+                _set_warning("no_cache")
+                _log_sentry("no_cache")
+                return "free"

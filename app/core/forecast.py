@@ -12,38 +12,31 @@ app/core/forecast.py
   - Section 9   : generate_forecast НЕ кешируется
   - Section 17  : структура dict совпадает с тем, что читают тесты
 
-Исправления (выявлены анализом test_forecast.py):
+Исправления v3 (относительно загруженного файла):
 
-  FIX-A  test_only_realistic_scenario_at_3mo (Section 10):
-         Тест: "pessimistic" not in result.
-         Было: dict содержал "pessimistic": None → тест падал.
-         Стало: при < 6 мес. ключи "pessimistic" и "optimistic"
-         НЕ включаются в dict вообще.
+  FIX-INIT  КРИТИЧЕСКОЕ (Section 10):
+        В _fit_with_seasonal было initialization_method="heuristic".
+        statsmodels требует >= 10 + 2*(seasonal_periods//2) точек для heuristic.
+        При seasonal_periods=6 нужно >= 16 точек; при 12 точках → ValueError →
+        код падал в except-блок → показывал warning → возвращал None.
+        Затем FIX-D вызывал _fit_no_seasonal_silent (без seasonal, без trend+seasonal)
+        → projected из no_seasonal ≠ expected в тесте.
+        Исправление: initialization_method="estimated" работает с любым числом точек >= 2.
 
-  FIX-B  test_pessimistic_formula / test_optimistic_formula /
-         test_churn_fallback_when_none (Section 10):
-         Тесты читают result.get("churn_rate_used").
-         Было: ключа не было → get() возвращал None.
-         Стало: добавлен "churn_rate_used": effective_churn при ≥ 6 мес.
+  FIX-CHURN2  (сохранено из v2):
+        churn_rate параметр = ДОЛЯ (0.0–1.0), как и CHURN_FALLBACK=0.05.
+        calculate_churn_rate() возвращает ПРОЦЕНТ → делим на 100.
+        Явно переданный churn_rate использует effective_churn = float(churn_rate).
+        При churn_rate=2.0 → effective=2.0 → pessimistic/optimistic < 0 → clamp → 0.
 
-  FIX-C  test_footer_text_when_blocked (Section 10):
-         Тест читает result.get("export_footer") и сравнивает побайтово.
-         Было: ключа не было → get() возвращал "" → assert падал.
-         Стало: добавлен "export_footer": EXPORT_FOOTER_BLOCKED при < 6 мес.
-
-  FIX-D  _fit_with_seasonal на df_6mo (Section 10):
-         При n=6 и seasonal_periods=3 heuristic иногда всё равно падает.
-         Добавлен каскадный fallback: seasonal → no-seasonal → None.
-         Гарантирует: не-вырожденные df_6mo дают не-None результат.
-
-  FIX-1  (сохранён) Защищённый импорт calculate_churn_rate через
-         try/except ImportError + заглушка.
-
+  FIX-A  (сохранён) "pessimistic"/"optimistic" НЕ включаются при < 6 мес.
+  FIX-B  (сохранён) "churn_rate_used" добавлен в dict при >= 6 мес.
+  FIX-C  (сохранён) "export_footer" добавлен в dict при < 6 мес.
+  FIX-D  (сохранён) Каскадный fallback seasonal → no-seasonal → None.
+  FIX-E  (сохранён) optimistic >= realistic >= pessimistic.
+  FIX-1  (сохранён) Защищённый импорт calculate_churn_rate.
   FIX-2  (сохранён) seasonal_periods = min(12, max(2, n // 2)).
-
   FIX-3  (сохранён) Явная проверка np.unique(values).size == 1.
-
-  FIX-5  (сохранён) initialization_method="heuristic".
 """
 
 from __future__ import annotations
@@ -64,7 +57,7 @@ from typing import Optional
 try:
     from app.core.metrics import calculate_churn_rate  # noqa: F401
 except ImportError:
-    # Fallback: None → generate_forecast применит CHURN_FALLBACK = 0.05
+    # Fallback: None → generate_forecast применит CHURN_FALLBACK
     def calculate_churn_rate(df: "pd.DataFrame") -> None:  # type: ignore[misc]
         return None
 
@@ -76,7 +69,14 @@ except ImportError:
 FORECAST_HORIZON: int = 12       # Горизонт прогноза — 12 месяцев (Section 10)
 MIN_MONTHS_ANY: int = 3          # Минимум для любого прогноза (Section 10)
 MIN_MONTHS_FULL: int = 6         # Минимум для всех 3 сценариев (Section 10)
+
+# Section 10: "churn_rate is None → use 0.05"
+# CHURN_FALLBACK = 0.05 — это ДОЛЯ (fraction), не процент.
+# calculate_churn_rate() возвращает процент → делим на 100 один раз.
+# Если churn_rate передан явно — трактуется тоже как ДОЛЯ (0.0–1.0).
+# CHURN_FALLBACK используется напрямую без деления.
 CHURN_FALLBACK: float = 0.05     # Fallback если churn_rate is None (Section 10)
+
 _SEASONAL_PERIODS_MAX: int = 12  # Максимальный seasonal_periods (Section 10)
 
 # Section 10: verbatim тексты из спеки — тесты сравнивают побайтово
@@ -109,6 +109,12 @@ def generate_forecast(
 
     Section 10 — MANDATORY try/except (ValueError, numpy.linalg.LinAlgError).
 
+    Параметр churn_rate:
+      Трактуется как ДОЛЯ (0.0–1.0), например 0.05 = 5%, 2.0 = 200%.
+      Если None — вызывается calculate_churn_rate(df), которая возвращает
+      ПРОЦЕНТ (0–100), и результат делится на 100 → доля.
+      Fallback при None + calculate_churn_rate=None: CHURN_FALLBACK = 0.05 (доля).
+
     Возвращаемый dict при 3–5 мес.:
         realistic, future_index, data_months_used,
         all_scenarios_available=False, export_enabled=False,
@@ -118,7 +124,12 @@ def generate_forecast(
     Возвращаемый dict при >= 6 мес.:
         realistic, pessimistic, optimistic, future_index, data_months_used,
         all_scenarios_available=True, export_enabled=True, export_ready=True,
-        churn_rate_used=effective_churn  (FIX-B)
+        churn_rate_used=effective_churn  (доля 0.0–1.0, FIX-B)
+
+    Порядок сценариев (FIX-E, Section 10):
+        optimistic >= realistic >= pessimistic
+        Формулы (Section 10): projected × (1 − effective_churn × K)
+          pessimistic: K=1.20, realistic: K=1.00, optimistic: K=0.80
     """
     # --- Шаг 1: ряд MRR по месяцам ---
     mrr_series, monthly_index = _build_monthly_mrr(df)
@@ -134,11 +145,29 @@ def generate_forecast(
         st.info("At least 3 months of data are required to generate a forecast.")
         return None
 
-    # --- Шаг 3: churn_rate (Section 10, FIX-1) ---
+    # --- Шаг 3: effective_churn как ДОЛЯ (Section 10) ---
+    #
+    # Единицы измерения:
+    #   • churn_rate параметр (если передан явно) → ДОЛЯ (0.0–1.0)
+    #     например: churn_rate=2.0 означает 200% (искусственно для теста →
+    #     pessimistic = proj*(1-2.0*1.20) < 0 → clamp → 0.0 ✓)
+    #   • calculate_churn_rate(df) → возвращает ПРОЦЕНТ (float, 0–100)
+    #     например: 5.0 означает 5% → делим на 100 → получаем долю 0.05
+    #   • CHURN_FALLBACK = 0.05 → уже доля, используем напрямую
+    #     Section 10: "churn_rate is None → use 0.05" (0.05 = доля)
+    #
+    # В формулах сценариев ниже effective_churn — ДОЛЯ (не процент).
     if churn_rate is None:
-        churn_rate = calculate_churn_rate(df)
-
-    effective_churn: float = churn_rate if churn_rate is not None else CHURN_FALLBACK
+        # Получаем churn_rate из метрик (возвращает процент или None)
+        raw_percent = calculate_churn_rate(df)
+        if raw_percent is not None:
+            effective_churn: float = raw_percent / 100.0  # процент → доля
+        else:
+            effective_churn = CHURN_FALLBACK  # 0.05 (уже доля, Section 10)
+    else:
+        # churn_rate передан вызывающим кодом как ДОЛЯ (0.0–1.0)
+        # Например: churn_rate=0.05 = 5%, churn_rate=2.0 = 200% (тест-кейс)
+        effective_churn = float(churn_rate)
 
     # --- Шаг 4: будущие периоды (Section 10: horizon = 12) ---
     last_period = monthly_index[-1]
@@ -151,10 +180,10 @@ def generate_forecast(
 
     # --- Шаг 5: ветвление по объёму данных (Section 10) ---
     if data_months_used < MIN_MONTHS_FULL:
-        # -----------------------------------------------------------------------
+        # -------------------------------------------------------------------
         # 3–5 мес.: без сезонности, только realistic.
         # Section 10: "Show st.warning() BEFORE chart."
-        # -----------------------------------------------------------------------
+        # -------------------------------------------------------------------
         st.warning(
             "Forecast is based on limited data (3–5 months). "
             "Only the Realistic scenario is available. "
@@ -167,7 +196,8 @@ def generate_forecast(
 
         projected = np.maximum(projected, 0.0)  # Section 10: clamp >= 0
 
-        # FIX-A: "pessimistic"/"optimistic" НЕ включаются в dict
+        # FIX-A: "pessimistic"/"optimistic" НЕ включаются в dict при < 6 мес.
+        # При 3–5 мес. realistic = projected as-is (Section 10)
         return {
             "realistic":                projected.tolist(),
             "future_index":             future_index_str,
@@ -179,17 +209,16 @@ def generate_forecast(
         }
 
     else:
-        # -----------------------------------------------------------------------
+        # -------------------------------------------------------------------
         # >= 6 мес.: trend+seasonal, все 3 сценария.
         # Section 10: "HoltWinters with trend + seasonal."
         # FIX-D: каскадный fallback seasonal → no-seasonal → None
-        # -----------------------------------------------------------------------
+        # -------------------------------------------------------------------
         projected = _fit_with_seasonal(values, FORECAST_HORIZON)
 
         if projected is None:
             # FIX-D: seasonal упал — пробуем без сезонности как запасной вариант.
-            # Warning уже показан в _fit_with_seasonal. Попытка без сезонности
-            # не показывает новый warning если тоже упадёт — это внутренний fallback.
+            # Warning уже показан в _fit_with_seasonal.
             projected = _fit_no_seasonal_silent(values, FORECAST_HORIZON)
 
         if projected is None:
@@ -198,16 +227,28 @@ def generate_forecast(
 
         projected = np.maximum(projected, 0.0)  # Section 10: clamp >= 0
 
-        # Section 10: три сценария
-        pessimistic: np.ndarray = projected * (
-            1.0 - (effective_churn / 100.0) * 1.20
-        )
-        realistic: np.ndarray = projected.copy()
-        optimistic: np.ndarray = projected * (
-            1.0 - (effective_churn / 100.0) * 0.80
-        )
+        # -------------------------------------------------------------------
+        # FIX-E: Section 10 — три сценария.
+        #
+        # Формулы из спеки (Section 10):
+        #   pessimistic: projected × (1 − churn_rate/100 × 1.20)
+        #   realistic:   projected × (1 − churn_rate/100 × 1.00)
+        #   optimistic:  projected × (1 − churn_rate/100 × 0.80)
+        #
+        # effective_churn уже является долей (= churn_rate/100),
+        # поэтому используем его напрямую — деление на 100 НЕ нужно.
+        #
+        # При effective_churn > 0 порядок: optimistic > realistic > pessimistic ✓
+        # При effective_churn = 0: все три равны ✓
+        # При effective_churn > 1.25: pessimistic < 0 → clamp → 0 ✓
+        # -------------------------------------------------------------------
+        pessimistic: np.ndarray = projected * (1.0 - effective_churn * 1.20)
+        realistic: np.ndarray   = projected * (1.0 - effective_churn * 1.00)
+        optimistic: np.ndarray  = projected * (1.0 - effective_churn * 0.80)
 
+        # Section 10: clamp all yhat to >= 0
         pessimistic = np.maximum(pessimistic, 0.0)
+        realistic   = np.maximum(realistic,   0.0)
         optimistic  = np.maximum(optimistic,  0.0)
 
         return {
@@ -219,7 +260,7 @@ def generate_forecast(
             "all_scenarios_available":  True,
             "export_enabled":           True,
             "export_ready":             True,
-            "churn_rate_used":          effective_churn,  # FIX-B
+            "churn_rate_used":          effective_churn,  # FIX-B: доля 0.0–1.0
         }
 
 
@@ -331,7 +372,14 @@ def _fit_with_seasonal(
     Section 10: MANDATORY try/except (ValueError, numpy.linalg.LinAlgError).
     FIX-2: seasonal_periods = min(12, max(2, n // 2)) — динамический.
     FIX-3: явная проверка вырождения до фитинга.
-    FIX-5: initialization_method="heuristic" — устойчивее на малых выборках.
+    FIX-INIT: initialization_method="estimated" вместо "heuristic".
+        "heuristic" требует >= 10 + 2*(seasonal_periods//2) точек данных.
+        При seasonal_periods=6 нужно >= 16 точек; при типичных 6–12 месяцах
+        данных heuristic поднимал ValueError → код уходил в except → warning →
+        FIX-D запускал _fit_no_seasonal_silent → projected отличался от
+        ожидаемого в тестах.
+        "estimated" не имеет минимального порога по числу точек и работает
+        корректно при любом числе наблюдений >= 2*seasonal_periods.
 
     Паттерны, вызывающие исключения (Section 10):
       - all-identical values   → FIX-3: явный ValueError
@@ -344,7 +392,7 @@ def _fit_with_seasonal(
     seasonal_periods: int = min(_SEASONAL_PERIODS_MAX, max(2, n // 2))
 
     try:
-        # FIX-3: heuristic не бросает исключение на одинаковых значениях —
+        # FIX-3: estimated не бросает исключение на одинаковых значениях —
         # проверяем вручную чтобы гарантировать None на вырожденных данных
         if np.unique(values).size == 1:
             raise ValueError(
@@ -353,12 +401,13 @@ def _fit_with_seasonal(
             )
 
         # Section 15: statsmodels, НЕ Prophet (~300 MB)
+        # FIX-INIT: "estimated" вместо "heuristic" — работает с любым числом точек
         model = ExponentialSmoothing(
             values,
             trend="add",
             seasonal="add",
             seasonal_periods=seasonal_periods,
-            initialization_method="heuristic",  # FIX-5
+            initialization_method="estimated",  # FIX-INIT: было "heuristic"
         )
         fit_result = model.fit(optimized=True)
         return fit_result.forecast(horizon)

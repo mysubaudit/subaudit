@@ -61,8 +61,8 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     cleaning_report : dict
         Отчёт об операциях очистки:
             - duplicates_removed (int)
-            - zero_amount_rows (int)
-            - negative_amount_rows (int)
+            - zeros_count (int)
+            - negatives_count (int)
             - rows_before (int)
             - rows_after (int)
             - encoding_warning (bool)
@@ -79,8 +79,8 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     # ------------------------------------------------------------------
     cleaning_report: dict = {
         "duplicates_removed": 0,
-        "zero_amount_rows": 0,
-        "negative_amount_rows": 0,
+        "zeros_count": 0,
+        "negatives_count": 0,
         "rows_before": len(df_raw),
         "rows_after": 0,
         "encoding_warning": False,
@@ -159,8 +159,8 @@ def clean_data(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
     # Сами строки НЕ удаляем — metrics.py фильтрует по «active rows» = status=='active' AND amount > 0
     # ------------------------------------------------------------------
     if "amount" in df.columns:
-        cleaning_report["zero_amount_rows"] = int((df["amount"] == 0).sum())
-        cleaning_report["negative_amount_rows"] = int((df["amount"] < 0).sum())
+        cleaning_report["zeros_count"] = int((df["amount"] == 0).sum())
+        cleaning_report["negatives_count"] = int((df["amount"] < 0).sum())
 
     # ------------------------------------------------------------------
     # Шаг 8: Финальный подсчёт строк

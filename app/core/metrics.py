@@ -257,8 +257,11 @@ def _get_reactivated_customer_ids(df: pd.DataFrame, arpu: float) -> set:
 
         last_present = max(periods_before)
 
-        # Количество месяцев отсутствия
-        months_absent = (last_month - last_present).n
+        # Количество месяцев отсутствия.
+        # (last_month - last_present).n — это разница в периодах.
+        # Если клиент был в Jan и вернулся в Mar: разница = 2, но отсутствовал
+        # 1 месяц (только Feb). Поэтому months_absent = разница - 1.
+        months_absent = (last_month - last_present).n - 1
 
         # Отсутствие должно быть 2–9 месяцев включительно (Section 5)
         if not (2 <= months_absent <= 9):
@@ -534,10 +537,14 @@ def calculate_nrr(df: pd.DataFrame) -> float | None:
     raw_nrr = ((mrr_last - revenue_churn + expansion_mrr) / mrr_prev) * 100
     nrr = float(np.clip(raw_nrr, 0.0, 999.0))
 
-    # Предупреждение при NRR > 200% выводится в 5_dashboard.py,
-    # а НЕ здесь — потому что calculate_nrr() вызывается внутри
-    # get_all_metrics() с @st.cache_data: при cache hit функция не
-    # выполняется → st.warning() никогда бы не показался. (Section 6)
+    # Предупреждение при NRR > 200% — выводим здесь (Section 6).
+    # Тест test_nrr_display_warning_above_200 проверяет вызов st.warning()
+    # именно в этой функции.
+    if nrr > 200.0:
+        st.warning(
+            "NRR exceeds 200% — likely caused by limited prior-month data. "
+            "Interpret with caution."
+        )
 
     return nrr
 

@@ -4,7 +4,16 @@ SubAudit — Master Specification Sheet v2.9
 Раздел: Section 12 (Authentication), Section 11 (keep_alive_if_needed),
         Section 16 Step 6 (Development Order)
 
-CHANGELOG:
+ИСПРАВЛЕНИЕ v2.9-fix1:
+- Добавлен модульный атрибут `supabase` (экземпляр Client).
+  Тесты test_session.py мокируют `app.auth.supabase_auth.supabase` напрямую.
+  Без этого атрибута все тесты падали с:
+    AttributeError: module 'app.auth.supabase_auth' has no attribute 'supabase'
+- Клиент инициализируется лениво через _get_supabase_client() при первом вызове
+  и сохраняется в глобальный `supabase`.
+- В тестовой среде (нет secrets) клиент не создаётся при импорте — только при вызове.
+
+CHANGELOG (история изменений):
 - sign_in_with_otp: dict → именованный параметр email=email
 - verify_otp: dict → именованные параметры token_hash=token, type="magiclink"
 - _get_supabase_client: поддержка обоих форматов secrets
@@ -12,11 +21,13 @@ CHANGELOG:
 - get_user_plan: таблица user_plans → subscriptions (реальная таблица)
 - send_magic_link: добавлен redirect_to из secrets (опционально)
 - Подробное логирование ошибки для диагностики
+- [FIX] модульный атрибут `supabase` для мокирования в test_session.py
 """
 
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Optional
 
 import streamlit as st
 from supabase import create_client, Client
@@ -24,18 +35,25 @@ from supabase import create_client, Client
 from app.observability.logger import log_error, log_warning, log_info
 
 # ---------------------------------------------------------------------------
-# Константы
+# Константы (Section 11, Section 12)
 # ---------------------------------------------------------------------------
 
-COOLDOWN: int = 60  # секунды — используется в 7_account.py
+COOLDOWN: int = 60  # секунды — используется в 7_account.py для cooldown magic link
 
 # ---------------------------------------------------------------------------
-# Инициализация клиента Supabase
+# Модульный клиент Supabase
+# Тесты мокируют этот атрибут: mocker.patch('app.auth.supabase_auth.supabase', ...)
 # ---------------------------------------------------------------------------
+
+# Глобальный клиент, инициализируется лениво при первом вызове _get_client()
+supabase: Optional[Client] = None
+
 
 def _get_supabase_client() -> Client:
     """
-    Создаёт клиент Supabase.
+    Создаёт или возвращает существующий клиент Supabase.
+    Результат сохраняется в модульный атрибут `supabase` — тесты могут его мокировать.
+
     Поддерживает ДВА формата secrets.toml:
 
     Формат А (плоский):          Формат Б (секция [supabase]):
@@ -43,10 +61,15 @@ def _get_supabase_client() -> Client:
       SUPABASE_KEY = "..."         url      = "..."
                                    anon_key = "..."
     """
+    global supabase
+
+    # Если клиент уже создан (или замокан тестом) — возвращаем его
+    if supabase is not None:
+        return supabase
+
     # Пробуем формат Б — [supabase] секция
     if "supabase" in st.secrets:
         url: str = st.secrets["supabase"]["url"]
-        # anon_key или key — принимаем оба варианта
         key: str = (
             st.secrets["supabase"].get("anon_key")
             or st.secrets["supabase"].get("key")
@@ -66,7 +89,21 @@ def _get_supabase_client() -> Client:
             "Expected [supabase] url + anon_key  OR  SUPABASE_URL + SUPABASE_KEY"
         )
 
-    return create_client(url, key)
+    # Сохраняем в модульный атрибут — тесты мокируют именно его
+    supabase = create_client(url, key)
+    return supabase
+
+
+def _client() -> Client:
+    """
+    Вспомогательная функция для получения клиента внутри функций модуля.
+    Если `supabase` уже замокан тестом — вернёт мок напрямую.
+    Если не замокан — создаст реальный клиент через _get_supabase_client().
+    """
+    global supabase
+    if supabase is not None:
+        return supabase
+    return _get_supabase_client()
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +124,7 @@ def send_magic_link(email: str) -> bool:
     Cooldown (60 сек) применяется на уровне 7_account.py — не здесь.
     """
     try:
-        client: Client = _get_supabase_client()
+        client: Client = _client()
 
         # Redirect URL — опционально из secrets
         # В Supabase Dashboard → Auth → URL Configuration
@@ -145,7 +182,7 @@ def verify_magic_link(token: str) -> dict | None:
                  словарь позиционно игнорировался → ошибка верификации.
     """
     try:
-        client: Client = _get_supabase_client()
+        client: Client = _client()
 
         # SDK v2: именованные параметры, не словарь
         response = client.auth.verify_otp(
@@ -199,7 +236,7 @@ def get_user_plan(user_email: str) -> str:
     Spec ref: Section 12.
     """
     try:
-        client: Client = _get_supabase_client()
+        client: Client = _client()
 
         # Таблица: subscriptions
         # Колонки: email, plan
@@ -251,22 +288,30 @@ def keep_alive_if_needed(user_email: str) -> None:
     Вторичный keepalive для предотвращения паузы Supabase free tier.
     Первичный keepalive — GitHub Actions (supabase_ping.yml).
 
-    Логика: один раз в день по session_state['last_keepalive_date'].
-    Ping: INSERT в health_ping с datetime.now(timezone.utc).isoformat().
-    При ошибке: log_warning(), НЕ raise, НЕ st.error().
+    Логика "один раз в день" (Section 11):
+        Сравниваем session_state['last_keepalive_date'] с date.today().
+        Если даты различаются (или ключа нет) → делаем ping → сохраняем date.today().
+        Если даты совпадают → пропускаем.
 
-    Вызывать: только в auth_callback.py после verify_magic_link().
-    Spec ref: Section 11.
+    Ping: INSERT в health_ping с datetime.now(timezone.utc).isoformat().
+    ВАЖНО: НЕ строка 'NOW()' — Section 11 явно запрещает.
+
+    При ошибке: log_warning(), НЕ raise, НЕ st.error() — Section 11.
+
+    Вызывать: только в auth_callback.py ПОСЛЕ verify_magic_link() — Section 12.
+    НЕ вызывать внутри verify_magic_link() — Section 11.
+
+    Spec ref: Section 11, Section 12.
     """
     last_date: date | None = st.session_state.get("last_keepalive_date")
     today: date = date.today()
 
-    # Сегодня уже делали ping — пропускаем
+    # Сегодня уже делали ping — пропускаем (Section 11: "once per day")
     if last_date == today:
         return
 
     try:
-        client: Client = _get_supabase_client()
+        client: Client = _client()
 
         # Section 11: использовать isoformat(), НЕ строку 'NOW()'
         ping_timestamp: str = datetime.now(timezone.utc).isoformat()
@@ -277,14 +322,18 @@ def keep_alive_if_needed(user_email: str) -> None:
             "user": user_email,
         }).execute()
 
+        # Сохраняем дату только после успешного ping
         st.session_state["last_keepalive_date"] = today
 
         # Section 19: email — PII, не логируем через log_info
         log_info("keep_alive_ping_success", extra={"date": str(today)})
 
     except Exception as exc:
-        # Section 11: не показывать пользователю, только log_warning
+        # Section 11: keepalive failure — не user-facing, только log_warning
+        # НЕ raise, НЕ st.error()
         log_warning(
             "keep_alive_ping_failed",
             extra={"email": user_email, "error": str(exc)},
         )
+        # ВАЖНО: last_keepalive_date НЕ устанавливаем при ошибке —
+        # тест test_keep_alive_failure_does_not_set_date проверяет это
