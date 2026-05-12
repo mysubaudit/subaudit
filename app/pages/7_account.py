@@ -10,11 +10,14 @@
 import time
 import streamlit as st
 from datetime import date
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Импортируем вспомогательные модули согласно Section 4
 from app.auth.supabase_auth import send_magic_link, get_user_plan, keep_alive_if_needed
 from app.payments.gumroad import get_subscription_status
 from app.observability.logger import log_info, log_warning
+from app.utils.page_setup import inject_nav_css, render_sidebar
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Константа кулдауна для повторной отправки magic link
@@ -386,12 +389,10 @@ def main() -> None:
         page_icon="👤",
         layout="centered",
     )
-    st.markdown("""
-    <style>
-    [data-testid="stSidebarNav"] { display: none !important; }
-    [data-testid="stSidebarNavItems"] { display: none !important; }
-    </style>
-    """, unsafe_allow_html=True)
+
+    # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
+    inject_nav_css()
+    render_sidebar()
 
     st.title("👤 Account")
 
