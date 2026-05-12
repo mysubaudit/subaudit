@@ -43,6 +43,17 @@ _NAV_CSS = """
 
     /* Убираем отступ, который Streamlit оставляет под скрытой навигацией */
     section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
+
+    /* Скрываем пустой sidebar (когда render_sidebar делает early return) */
+    section[data-testid="stSidebar"]:has(> div:first-child:empty),
+    section[data-testid="stSidebar"]:has(> div:first-child > div:empty) {
+        display: none !important;
+    }
+
+    /* Скрываем кнопку collapsed control когда sidebar пустой */
+    button[data-testid="collapsedControl"] {
+        display: none !important;
+    }
 </style>
 """
 
