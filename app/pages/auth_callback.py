@@ -115,6 +115,9 @@ def main() -> None:
     # -------------------------------------------------------------------
     query_params = st.query_params
 
+    # DEBUG: показываем все параметры для диагностики
+    st.write("DEBUG: Query params:", dict(query_params))
+
     # Supabase magic link может передавать токен в разных параметрах
     # v2.4.6 использует "token_hash" для magic link (EmailOtpType)
     token: str | None = (
@@ -122,6 +125,8 @@ def main() -> None:
         or query_params.get("token")
         or query_params.get("access_token")
     )
+
+    st.write("DEBUG: Extracted token:", token[:20] + "..." if token else "None")
 
     if not token:
         # Токен отсутствует — пользователь попал сюда случайно или ссылка устарела
