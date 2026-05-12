@@ -751,7 +751,7 @@ with st.expander("📄 Terms of Service", expanded=False):
 
 **Terms of Service**
 
-*Last updated: May 8, 2025*
+*Last updated: May 12, 2026*
 
 **1. Acceptance of Terms**
 
@@ -811,7 +811,7 @@ with st.expander("🔒 Privacy Policy", expanded=False):
 
 **Privacy Policy**
 
-*Last updated: May 8, 2025*
+*Last updated: May 12, 2026*
 
 **1. What We Collect**
 
@@ -875,7 +875,7 @@ with st.expander("💳 Refund Policy", expanded=False):
 
 **Refund Policy**
 
-*Last updated: May 8, 2025*
+*Last updated: May 12, 2026*
 
 **Our Commitment**
 
