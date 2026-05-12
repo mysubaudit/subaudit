@@ -54,13 +54,23 @@ def send_feedback(user_email: str, rating: int | None, message: str) -> bool:
         return True
 
     except Exception as exc:
+        # Временное DEBUG логирование для диагностики
+        import traceback
+        error_details = {
+            "email": user_email,
+            "exc_type": type(exc).__name__,
+            "exc_detail": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+
         log_error(
             "send_feedback_failed",
             exc=exc,
-            extra={
-                "email": user_email,
-                "exc_type": type(exc).__name__,
-                "exc_detail": str(exc),
-            },
+            extra=error_details,
         )
+
+        # Временно показываем ошибку пользователю для диагностики
+        import streamlit as st
+        st.error(f"DEBUG: {type(exc).__name__}: {str(exc)}")
+
         return False
