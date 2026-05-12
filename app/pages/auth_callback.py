@@ -110,41 +110,17 @@ def main() -> None:
 </style>
 """, unsafe_allow_html=True)
     # -------------------------------------------------------------------
-    # Шаг 1: Получение токена из URL (query params или fragment)
-    # Supabase может передавать токен через fragment (#) или query (?)
-    # Streamlit st.query_params не видит fragment — используем JavaScript
+    # Шаг 1: Получение токена из URL (query params)
+    # После изменения Email Template токен приходит напрямую как "token"
     # -------------------------------------------------------------------
-
-    # Сначала пробуем query params (если токен в URL после ?)
     query_params = st.query_params
+
+    # Supabase magic link передаёт токен как "token" в query params
     token: str | None = (
-        query_params.get("token_hash")
-        or query_params.get("token")
+        query_params.get("token")
+        or query_params.get("token_hash")
         or query_params.get("access_token")
     )
-
-    # Если токена нет в query params, пробуем извлечь из fragment (#)
-    if not token:
-        # JavaScript для извлечения fragment и отправки в Streamlit
-        fragment_script = """
-        <script>
-        const fragment = window.location.hash.substring(1);
-        const params = new URLSearchParams(fragment);
-        const token = params.get('token_hash') || params.get('access_token') || params.get('token');
-
-        if (token) {
-            // Перенаправляем на auth_callback с токеном в query params
-            window.location.href = window.location.pathname + '?token_hash=' + encodeURIComponent(token);
-        }
-        </script>
-        """
-        st.components.v1.html(fragment_script, height=0)
-
-        # После редиректа проверяем query params снова
-        token = query_params.get("token_hash")
-
-    st.write("DEBUG: Query params:", dict(query_params))
-    st.write("DEBUG: Extracted token:", token[:20] + "..." if token else "None")
 
     if not token:
         # Токен отсутствует — пользователь попал сюда случайно или ссылка устарела
@@ -152,7 +128,7 @@ def main() -> None:
             "❌ Invalid or expired login link. "
             "Please request a new magic link from the login page."
         )
-        log_warning("auth_callback: токен отсутствует в query_params и fragment")
+        log_warning("auth_callback: токен отсутствует в query_params")
         st.stop()
         return
 

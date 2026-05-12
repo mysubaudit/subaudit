@@ -126,10 +126,16 @@ def send_magic_link(email: str) -> bool:
     try:
         client: Client = _client()
 
-        # Redirect URL — опционально из secrets
-        # В Supabase Dashboard → Auth → URL Configuration
-        # добавить: https://subaudit.streamlit.app/*
-        redirect_url: str | None = st.secrets.get("SUPABASE_REDIRECT_URL") or None
+        # Redirect URL для magic link
+        # Supabase отправляет ссылку вида:
+        # https://PROJECT.supabase.co/auth/v1/verify?token=...&type=magiclink&redirect_to=URL
+        #
+        # ПРОБЛЕМА: после верификации Supabase редиректит на redirect_to БЕЗ токена.
+        # РЕШЕНИЕ: НЕ использовать redirect_to. Вместо этого настроить Email Template
+        # в Supabase Dashboard, чтобы ссылка вела напрямую на наш auth_callback с токеном.
+        #
+        # Пока оставляем redirect_to для совместимости, но это не решает проблему.
+        redirect_url: str = "https://subaudit.streamlit.app/auth_callback"
 
         # Supabase Python SDK v2: sign_in_with_otp принимает словарь (TypedDict)
         # SignInWithPasswordlessCredentials = {"email": str, "options": {...}}

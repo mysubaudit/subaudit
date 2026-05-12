@@ -286,8 +286,20 @@ def _render_feedback_section() -> None:
         "ratings, suggestions, bug reports, or just a hello. 👋"
     )
 
-    # Звёздочный рейтинг — встроенный виджет Streamlit 1.35 (Section 15)
-    rating = st.feedback("stars", key="user_feedback_stars")
+    # Звёздочный рейтинг — встроенный виджет Streamlit 1.31+ (Section 15)
+    # Проверяем доступность st.feedback (может отсутствовать в старых версиях)
+    rating = None
+    if hasattr(st, "feedback"):
+        rating = st.feedback("stars", key="user_feedback_stars")
+    else:
+        # Fallback для старых версий Streamlit
+        rating_select = st.selectbox(
+            "Rating (optional)",
+            options=["", "⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"],
+            key="user_feedback_stars_fallback",
+        )
+        if rating_select:
+            rating = len(rating_select) - 1  # Конвертируем в индекс 0-4
 
     # Текстовое поле для развёрнутого сообщения
     message = st.text_area(
