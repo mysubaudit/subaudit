@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest *)",
+      "Bash(python *)",
+      "Bash(git push *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(./run.bat)",
+      "WebSearch",
+      "Bash(grep -E \"\\\\.py$\")"
+    ]
+  }
+}

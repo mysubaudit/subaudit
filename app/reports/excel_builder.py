@@ -413,24 +413,33 @@ def _build_sheet_metrics_detail(
     _style_header_row(ws, 2, len(headers))
 
     # Метрики с числовыми значениями и Excel-формулами
-    # Формулы ссылаются на ячейки листа, демонстрируя логику из Section 6
+    # Формулы ссылаются на ячейки колонки B (Raw Value), демонстрируя логику из Section 6
+    # Строки: MRR=3, ARR=4, ARPU=5, Total Revenue=6, New MRR=7, Reactivation MRR=8,
+    #         Growth Rate=9, New Subscribers=10, Reactivated Subscribers=11,
+    #         Churn Rate=12, Revenue Churn=13, NRR=14, LTV=15, Active Subscribers=16,
+    #         Lost Subscribers=17, Existing Subscribers=18,
+    #         [Промежуточные] MRR Prev Month=19, Active Subs Prev Month=20, Expansion MRR=21
     rows = [
-        ("mrr",                  metrics.get("mrr"),                  _fmt_currency(metrics.get("mrr"), currency),        "=B3"),
+        ("mrr",                  metrics.get("mrr"),                  _fmt_currency(metrics.get("mrr"), currency),        "Calculated from raw data"),
         ("arr",                  metrics.get("arr"),                  _fmt_currency(metrics.get("arr"), currency),        "=B3*12"),
-        ("arpu",                 metrics.get("arpu"),                 _fmt_currency(metrics.get("arpu"), currency),       "=IF(active_subscribers=0,0,mrr/active_subscribers)"),
-        ("total_revenue",        metrics.get("total_revenue"),        _fmt_currency(metrics.get("total_revenue"), currency), "=SUM(all_positive_amounts)"),
-        ("new_mrr",              metrics.get("new_mrr"),              _fmt_currency(metrics.get("new_mrr"), currency),    "=SUMIF(customer_type,\"new\",amount)"),
-        ("reactivation_mrr",     metrics.get("reactivation_mrr"),     _fmt_currency(metrics.get("reactivation_mrr"), currency), "=SUMIF(customer_type,\"reactivated\",amount)"),
-        ("growth_rate",          metrics.get("growth_rate"),          _fmt_pct(metrics.get("growth_rate")),               "=IF(mrr_prev=0,\"N/A\",(mrr_last-mrr_prev)/mrr_prev*100)"),
-        ("new_subscribers",      metrics.get("new_subscribers"),      _fmt_int(metrics.get("new_subscribers")),           "=COUNTIF(first_appearance,last_month)"),
-        ("reactivated_subscribers", metrics.get("reactivated_subscribers"), _fmt_int(metrics.get("reactivated_subscribers")), "=COUNTIF(customer_type,\"reactivated\")"),
-        ("churn_rate",           metrics.get("churn_rate"),           _fmt_pct(metrics.get("churn_rate")),                "=IF(active_prev=0,\"N/A\",lost/active_prev*100)"),
-        ("revenue_churn",        metrics.get("revenue_churn"),        _fmt_currency(metrics.get("revenue_churn"), currency), "=SUM(scenario_A+scenario_B)  [no double-count C/D]"),
-        ("nrr",                  metrics.get("nrr"),                  _fmt_pct(metrics.get("nrr")),                       "=MAX(0,MIN(999,(mrr_last-rev_churn+exp_mrr)/mrr_prev*100))"),
-        ("ltv",                  metrics.get("ltv"),                  _fmt_currency(metrics.get("ltv"), currency),        "=IF(churn_rate=0,arpu*36,arpu/(churn_rate/100))"),
-        ("active_subscribers",   metrics.get("active_subscribers"),   _fmt_int(metrics.get("active_subscribers")),        "=COUNTIF(status,\"active\")  [last_month]"),
-        ("lost_subscribers",     metrics.get("lost_subscribers"),     _fmt_int(metrics.get("lost_subscribers")),          "=active_prev - existing_subs"),
-        ("existing_subscribers", metrics.get("existing_subscribers"), _fmt_int(metrics.get("existing_subscribers")),      "=COUNTIF(active_both_months, TRUE)"),
+        ("arpu",                 metrics.get("arpu"),                 _fmt_currency(metrics.get("arpu"), currency),       "=IF(B16=0,0,B3/B16)"),
+        ("total_revenue",        metrics.get("total_revenue"),        _fmt_currency(metrics.get("total_revenue"), currency), "Calculated from raw data"),
+        ("new_mrr",              metrics.get("new_mrr"),              _fmt_currency(metrics.get("new_mrr"), currency),    "Calculated from raw data"),
+        ("reactivation_mrr",     metrics.get("reactivation_mrr"),     _fmt_currency(metrics.get("reactivation_mrr"), currency), "Calculated from raw data"),
+        ("growth_rate",          metrics.get("growth_rate"),          _fmt_pct(metrics.get("growth_rate")),               "=IF(B19=0,\"N/A\",(B3-B19)/B19*100)"),
+        ("new_subscribers",      metrics.get("new_subscribers"),      _fmt_int(metrics.get("new_subscribers")),           "Calculated from raw data"),
+        ("reactivated_subscribers", metrics.get("reactivated_subscribers"), _fmt_int(metrics.get("reactivated_subscribers")), "Calculated from raw data"),
+        ("churn_rate",           metrics.get("churn_rate"),           _fmt_pct(metrics.get("churn_rate")),                "=IF(B20=0,\"N/A\",B17/B20*100)"),
+        ("revenue_churn",        metrics.get("revenue_churn"),        _fmt_currency(metrics.get("revenue_churn"), currency), "Calculated from raw data"),
+        ("nrr",                  metrics.get("nrr"),                  _fmt_pct(metrics.get("nrr")),                       "=MAX(0,MIN(999,(B3-B13+B21)/B19*100))"),
+        ("ltv",                  metrics.get("ltv"),                  _fmt_currency(metrics.get("ltv"), currency),        "=IF(B12=0,B5*36,B5/(B12/100))"),
+        ("active_subscribers",   metrics.get("active_subscribers"),   _fmt_int(metrics.get("active_subscribers")),        "Calculated from raw data"),
+        ("lost_subscribers",     metrics.get("lost_subscribers"),     _fmt_int(metrics.get("lost_subscribers")),          "=B20-B18"),
+        ("existing_subscribers", metrics.get("existing_subscribers"), _fmt_int(metrics.get("existing_subscribers")),      "Calculated from raw data"),
+        # Промежуточные значения для формул (не отображаются в Summary)
+        ("mrr_prev_month",       metrics.get("mrr_prev_month"),       _fmt_currency(metrics.get("mrr_prev_month"), currency), "MRR of previous month"),
+        ("active_subscribers_prev_month", metrics.get("active_subscribers_prev_month"), _fmt_int(metrics.get("active_subscribers_prev_month")), "Active subscribers in previous month"),
+        ("expansion_mrr",        metrics.get("expansion_mrr"),        _fmt_currency(metrics.get("expansion_mrr"), currency), "MRR increase from existing customers"),
     ]
 
     for idx, (key, raw_val, fmt_val, formula) in enumerate(rows):
@@ -818,14 +827,17 @@ def _build_sheet_data_quality(
     flag_rows = [
         ("prev_month_status",
          data_quality_flags.get("prev_month_status", "unknown"),
-         "'ok' = prev month present. 'gap' = missing calendar month. "
-         "Affects Growth Rate, Churn Rate, NRR, Lost Subscribers."),
+         "'ok' = Previous month data available. 'gap' = Missing calendar month. "
+         "'missing' = No data before last month. "
+         "Affects: Growth Rate, Churn Rate, NRR, Lost Subscribers (shown as N/A when not 'ok')."),
         ("last_month_is_fallback",
          str(data_quality_flags.get("last_month_is_fallback", False)),
-         "True if last_month has < 5 unique active customers — fallback UI warning shown."),
+         "True = Last month has fewer than 5 active customers (data quality warning shown). "
+         "False = Last month meets minimum threshold for reliable metrics."),
         ("last_month_used",
          str(data_quality_flags.get("last_month_used", "N/A")),
-         "Calendar month used as 'last_month' for all metric calculations."),
+         "The calendar month (YYYY-MM) used as 'last month' for all metric calculations. "
+         "This is the most recent month with sufficient data."),
     ]
 
     headers = ["Flag", "Value", "Meaning"]

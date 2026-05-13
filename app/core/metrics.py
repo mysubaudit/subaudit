@@ -758,6 +758,9 @@ def get_all_metrics(df_clean: pd.DataFrame) -> dict:
     вычисления (Section 9: «arpu passed to avoid recomputation»).
 
     Возвращаемые ключи соответствуют Section 9 (все блоки 1–5).
+
+    Дополнительно возвращает промежуточные значения для Excel-формул:
+    - mrr_prev_month, active_subscribers_prev_month, expansion_mrr
     """
     # --- Блок 1: Revenue ---
     mrr = calculate_mrr(df_clean)
@@ -786,6 +789,43 @@ def get_all_metrics(df_clean: pd.DataFrame) -> dict:
     # --- Блок 5: Cohort ---
     cohort_table = calculate_cohort_table(df_clean)
 
+    # --- Промежуточные значения для Excel-формул ---
+    ctx = _compute_time_context(df_clean)
+    mrr_prev_month = None
+    active_subscribers_prev_month = None
+    expansion_mrr = None
+
+    if ctx["prev_month_status"] == "ok":
+        prev_month = ctx["prev_month"]
+        active = (
+            df_clean[(df_clean["status"] == "active") & (df_clean["amount"] > 0)]
+            .assign(_period=lambda x: x["date"].dt.to_period("M"))
+        )
+
+        # MRR prev month
+        rows_prev = active[active["_period"] == prev_month]
+        if not rows_prev.empty:
+            mrr_prev_month = float(rows_prev.groupby("customer_id")["amount"].sum().sum())
+
+        # Active Subscribers prev month
+        active_subscribers_prev_month = len(rows_prev["customer_id"].unique())
+
+        # Expansion MRR (для NRR) — клиенты с ростом amount в last_month vs prev_month
+        last_month = ctx["last_month"]
+        rows_last = active[active["_period"] == last_month]
+
+        if not rows_last.empty and not rows_prev.empty:
+            prev_amounts = rows_prev.groupby("customer_id")["amount"].sum()
+            last_amounts = rows_last.groupby("customer_id")["amount"].sum()
+            common_customers = prev_amounts.index.intersection(last_amounts.index)
+
+            expansion = 0.0
+            for cid in common_customers:
+                delta = last_amounts[cid] - prev_amounts[cid]
+                if delta > 0:
+                    expansion += delta
+            expansion_mrr = float(expansion)
+
     return {
         # Блок 1 — Revenue
         "mrr": mrr,
@@ -809,4 +849,8 @@ def get_all_metrics(df_clean: pd.DataFrame) -> dict:
         "existing_subscribers": existing_subscribers,
         # Блок 5 — Cohort
         "cohort_table": cohort_table,
+        # Промежуточные значения для Excel-формул
+        "mrr_prev_month": mrr_prev_month,
+        "active_subscribers_prev_month": active_subscribers_prev_month,
+        "expansion_mrr": expansion_mrr,
     }

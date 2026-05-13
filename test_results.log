@@ -1,0 +1,439 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-8.2.2, pluggy-1.6.0 -- D:\Программирование\Проекты\SubAudit\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Программирование\Проекты\SubAudit
+plugins: anyio-4.13.0, mock-3.14.0
+collecting ... collected 300 items
+
+tests/test_cleaner.py::TestDuplicatesRemoved::test_duplicates_removed_count PASSED [  0%]
+tests/test_cleaner.py::TestDuplicatesRemoved::test_duplicates_reported PASSED [  0%]
+tests/test_cleaner.py::TestDuplicatesRemoved::test_no_duplicates_report_zero PASSED [  1%]
+tests/test_cleaner.py::TestDuplicatesRemoved::test_duplicates_removed_preserves_unique_rows PASSED [  1%]
+tests/test_cleaner.py::TestDuplicatesRemoved::test_duplicate_is_the_extra_row_not_original PASSED [  1%]
+tests/test_cleaner.py::TestMulticurrencyError::test_multicurrency_raises_value_error PASSED [  2%]
+tests/test_cleaner.py::TestMulticurrencyError::test_multicurrency_error_message_mentions_currency PASSED [  2%]
+tests/test_cleaner.py::TestMulticurrencyError::test_single_currency_passes PASSED [  2%]
+tests/test_cleaner.py::TestMulticurrencyError::test_two_currencies_both_different_raises PASSED [  3%]
+tests/test_cleaner.py::TestStatusNormalization::test_active_status_normalized_to_lowercase PASSED [  3%]
+tests/test_cleaner.py::TestStatusNormalization::test_churned_status_normalized_to_lowercase PASSED [  3%]
+tests/test_cleaner.py::TestStatusNormalization::test_trial_status_normalized_to_lowercase PASSED [  4%]
+tests/test_cleaner.py::TestStatusNormalization::test_all_statuses_are_lowercase_after_clean PASSED [  4%]
+tests/test_cleaner.py::TestStatusNormalization::test_already_lowercase_status_unchanged PASSED [  4%]
+tests/test_cleaner.py::TestStatusNormalization::test_normalization_does_not_drop_rows PASSED [  5%]
+tests/test_cleaner.py::TestNegativesTracked::test_negatives_key_present_in_cleaning_report PASSED [  5%]
+tests/test_cleaner.py::TestNegativesTracked::test_negatives_count_correct PASSED [  5%]
+tests/test_cleaner.py::TestNegativesTracked::test_negatives_not_removed_from_df_clean PASSED [  6%]
+tests/test_cleaner.py::TestNegativesTracked::test_negative_amounts_present_in_df_clean PASSED [  6%]
+tests/test_cleaner.py::TestNegativesTracked::test_negatives_excluded_from_active_rows_definition PASSED [  6%]
+tests/test_cleaner.py::TestNegativesTracked::test_no_negatives_report_zero PASSED [  7%]
+tests/test_cleaner.py::TestZerosTracked::test_zeros_key_present_in_cleaning_report PASSED [  7%]
+tests/test_cleaner.py::TestZerosTracked::test_zeros_count_correct PASSED [  7%]
+tests/test_cleaner.py::TestZerosTracked::test_zeros_not_removed_from_df_clean PASSED [  8%]
+tests/test_cleaner.py::TestZerosTracked::test_zero_amount_row_present_in_df_clean PASSED [  8%]
+tests/test_cleaner.py::TestZerosTracked::test_zeros_excluded_from_active_rows_definition PASSED [  8%]
+tests/test_cleaner.py::TestZerosTracked::test_zero_amount_active_counted_as_retained_in_cohort PASSED [  9%]
+tests/test_cleaner.py::TestZerosTracked::test_no_zeros_report_zero PASSED [  9%]
+tests/test_cleaner.py::TestCleanDataContract::test_returns_tuple_of_two PASSED [  9%]
+tests/test_cleaner.py::TestCleanDataContract::test_df_clean_is_dataframe PASSED [ 10%]
+tests/test_cleaner.py::TestCleanDataContract::test_cleaning_report_is_dict PASSED [ 10%]
+tests/test_cleaner.py::TestCleanDataContract::test_cleaning_report_has_duplicates_removed_key PASSED [ 10%]
+tests/test_cleaner.py::TestCleanDataContract::test_cleaning_report_has_zeros_count_key PASSED [ 11%]
+tests/test_cleaner.py::TestCleanDataContract::test_cleaning_report_has_negatives_count_key PASSED [ 11%]
+tests/test_cleaner.py::TestCleanDataContract::test_df_raw_columns_preserved PASSED [ 11%]
+tests/test_cleaner.py::TestCleanDataContract::test_clean_data_does_not_mutate_input_shape PASSED [ 12%]
+tests/test_cleaner.py::TestCleanDataContract::test_clean_data_does_not_mutate_input_values PASSED [ 12%]
+tests/test_forecast.py::TestReturnNoneSparse::test_returns_none_sparse PASSED [ 12%]
+tests/test_forecast.py::TestReturnNoneSparse::test_shows_info_message_sparse PASSED [ 13%]
+tests/test_forecast.py::TestThreeToFiveMonths::test_realistic_not_none_at_3mo PASSED [ 13%]
+tests/test_forecast.py::TestThreeToFiveMonths::test_only_realistic_scenario_at_3mo PASSED [ 13%]
+tests/test_forecast.py::TestThreeToFiveMonths::test_only_realistic_scenario_at_5mo PASSED [ 14%]
+tests/test_forecast.py::TestThreeToFiveMonths::test_warning_rendered_before_chart_3_5mo PASSED [ 14%]
+tests/test_forecast.py::TestThreeToFiveMonths::test_export_gate_blocks_at_5mo PASSED [ 14%]
+tests/test_forecast.py::TestSixPlusMonths::test_scenarios_enabled_at_6mo PASSED [ 15%]
+tests/test_forecast.py::TestSixPlusMonths::test_horizon_is_12_months PASSED [ 15%]
+tests/test_forecast.py::TestSixPlusMonths::test_export_enabled_at_6mo PASSED [ 15%]
+tests/test_forecast.py::TestSixPlusMonths::test_data_months_used_in_result PASSED [ 16%]
+tests/test_forecast.py::TestSixPlusMonths::test_pessimistic_formula PASSED [ 16%]
+tests/test_forecast.py::TestSixPlusMonths::test_optimistic_formula FAILED [ 16%]
+tests/test_forecast.py::TestSixPlusMonths::test_realistic_is_projected_as_is PASSED [ 17%]
+tests/test_forecast.py::TestSixPlusMonths::test_optimistic_gte_realistic_gte_pessimistic PASSED [ 17%]
+tests/test_forecast.py::TestNoNegativeYhat::test_no_negative_yhat PASSED [ 17%]
+tests/test_forecast.py::TestNoNegativeYhat::test_no_negative_yhat_at_6mo PASSED [ 18%]
+tests/test_forecast.py::TestChurnFallback::test_churn_fallback_when_none PASSED [ 18%]
+tests/test_forecast.py::TestChurnFallback::test_churn_fallback_affects_scenarios FAILED [ 18%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_value_error_returns_none PASSED [ 19%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_value_error_shows_warning PASSED [ 19%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_value_error_returns_none_via_fixture PASSED [ 19%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_linalg_error_returns_none PASSED [ 20%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_linalg_error_shows_warning PASSED [ 20%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_holtwinters_exception_does_not_propagate PASSED [ 20%]
+tests/test_forecast.py::TestHoltWintersExceptionHandling::test_both_exception_types_produce_same_warning PASSED [ 21%]
+tests/test_forecast.py::TestExportGate::test_export_gate_blocks_under_6mo PASSED [ 21%]
+tests/test_forecast.py::TestExportGate::test_export_gate_passes_at_6mo PASSED [ 21%]
+tests/test_forecast.py::TestExportGate::test_footer_text_when_blocked PASSED [ 22%]
+tests/test_forecast.py::TestWithFixtures::test_basic_fixture_forecast PASSED [ 22%]
+tests/test_forecast.py::TestWithFixtures::test_sparse_fixture_returns_none PASSED [ 22%]
+tests/test_forecast.py::TestWithFixtures::test_degenerate_fixture_returns_none PASSED [ 23%]
+tests/test_forecast.py::TestWithFixtures::test_gap_fixture_handles_missing_month PASSED [ 23%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_direct_subscript_mutation[core/metrics.py] PASSED [ 23%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_direct_subscript_mutation[core/forecast.py] PASSED [ 24%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_direct_subscript_mutation[core/simulation.py] PASSED [ 24%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_inplace_true[core/metrics.py] PASSED [ 24%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_inplace_true[core/forecast.py] PASSED [ 25%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_inplace_true[core/simulation.py] PASSED [ 25%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_aliased_mutation_without_copy[core/metrics.py] PASSED [ 25%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_aliased_mutation_without_copy[core/forecast.py] PASSED [ 26%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_aliased_mutation_without_copy[core/simulation.py] PASSED [ 26%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_augmented_assign_mutation[core/metrics.py] PASSED [ 26%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_augmented_assign_mutation[core/forecast.py] PASSED [ 27%]
+tests/test_immutability.py::TestImmutabilityPureFunctions::test_no_augmented_assign_mutation[core/simulation.py] PASSED [ 27%]
+tests/test_immutability.py::TestImmutabilityAllAppFiles::test_no_inplace_true_anywhere PASSED [ 27%]
+tests/test_immutability.py::TestImmutabilityAllAppFiles::test_no_aliased_mutation_anywhere PASSED [ 28%]
+tests/test_immutability.py::TestImmutabilityAllAppFiles::test_non_cleaner_files_have_no_subscript_mutations PASSED [ 28%]
+tests/test_immutability.py::TestImmutabilityAllAppFiles::test_augmented_assign_mutation_nowhere PASSED [ 28%]
+tests/test_immutability.py::TestImmutabilityAllAppFiles::test_cleaner_subscript_mutations_are_permitted PASSED [ 29%]
+tests/test_immutability.py::TestImmutabilityASTParseable::test_all_app_files_are_valid_python PASSED [ 29%]
+tests/test_immutability.py::TestImmutabilityASTParseable::test_app_directory_exists PASSED [ 29%]
+tests/test_immutability.py::TestImmutabilityASTParseable::test_pure_function_files_exist PASSED [ 30%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_direct_subscript_detected PASSED [ 30%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_direct_subscript_allowed_in_cleaner PASSED [ 30%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_loc_mutation_detected PASSED [ 31%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_iloc_mutation_detected PASSED [ 31%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_at_mutation_detected PASSED [ 31%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_iat_mutation_detected PASSED [ 32%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_loc_mutation_allowed_in_cleaner PASSED [ 32%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_name_detected PASSED [ 32%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_non_df_augmented_assign_ignored PASSED [ 33%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_loc_detected PASSED [ 33%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_iloc_detected PASSED [ 33%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_at_detected PASSED [ 34%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_iat_detected PASSED [ 34%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_assign_attr_non_df_ignored PASSED [ 34%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_inplace_true_detected PASSED [ 35%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_inplace_false_not_flagged PASSED [ 35%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_inplace_on_non_df_ignored PASSED [ 35%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_alias_without_copy_detected PASSED [ 36%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_alias_with_copy_not_detected PASSED [ 36%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_df_slice_not_flagged_as_alias PASSED [ 36%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_df_assign_call_not_flagged_as_alias PASSED [ 37%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_pure_metric_code_no_violations PASSED [ 37%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_clean_data_with_allow_subscript_no_violations PASSED [ 37%]
+tests/test_immutability.py::TestMutationVisitorUnit::test_augmented_loc_detected_even_with_allow_subscript PASSED [ 38%]
+tests/test_mapper.py::TestNoFalsePositive::test_no_false_positive_created_by PASSED [ 38%]
+tests/test_mapper.py::TestNoFalsePositive::test_no_false_positive_updated_by PASSED [ 38%]
+tests/test_mapper.py::TestNoFalsePositive::test_no_false_positive_amount_and_currency_not_swapped PASSED [ 39%]
+tests/test_mapper.py::TestNoFalsePositive::test_no_false_positive_status_not_mapped_to_customer_id PASSED [ 39%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_customer_id_variants[client_id] PASSED [ 39%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_customer_id_variants[user_id] PASSED [ 40%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_customer_id_variants[CustomerID] PASSED [ 40%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_customer_id_variants[customer id] PASSED [ 40%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_amount_variants[Amount] PASSED [ 41%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_amount_variants[mrr_amount] PASSED [ 41%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_amount_variants[subscription_amount] PASSED [ 41%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_status_variants[subscription_status] PASSED [ 42%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_status_variants[Status] PASSED [ 42%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_status_variants[sub_status] PASSED [ 42%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_date_variants[billing_date] PASSED [ 43%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_date_variants[subscription_date] PASSED [ 43%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_date_variants[Date] PASSED [ 43%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_date_variants[start_date] PASSED [ 44%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_exact_names_always_match PASSED [ 44%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_all_uppercase_columns PASSED [ 44%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_does_not_map_unrelated_columns PASSED [ 45%]
+tests/test_mapper.py::TestFuzzyMatch::test_fuzzy_match_returns_dict_with_all_canonical_keys PASSED [ 45%]
+tests/test_mapper.py::TestCurrencyMissing::test_currency_missing_returns_none PASSED [ 45%]
+tests/test_mapper.py::TestCurrencyMissing::test_currency_present_maps_correctly PASSED [ 46%]
+tests/test_mapper.py::TestCurrencyMissing::test_currency_fuzzy_variant_maps_correctly[Currency] PASSED [ 46%]
+tests/test_mapper.py::TestCurrencyMissing::test_currency_fuzzy_variant_maps_correctly[curr] PASSED [ 46%]
+tests/test_mapper.py::TestCurrencyMissing::test_currency_completely_absent_does_not_raise PASSED [ 47%]
+tests/test_mapper.py::TestCurrencyMissing::test_all_fields_missing_returns_all_none PASSED [ 47%]
+tests/test_mapper.py::TestColumnSanitization::test_column_sanitization PASSED [ 47%]
+tests/test_mapper.py::TestColumnSanitization::test_column_with_leading_trailing_whitespace PASSED [ 48%]
+tests/test_mapper.py::TestColumnSanitization::test_column_with_internal_spaces PASSED [ 48%]
+tests/test_mapper.py::TestColumnSanitization::test_column_mixed_case_sanitized PASSED [ 48%]
+tests/test_mapper.py::TestColumnSanitization::test_column_with_special_characters PASSED [ 49%]
+tests/test_mapper.py::TestColumnSanitization::test_column_with_numeric_suffix PASSED [ 49%]
+tests/test_mapper.py::TestColumnSanitization::test_empty_column_list_returns_all_none PASSED [ 49%]
+tests/test_mapper.py::TestColumnSanitization::test_duplicate_columns_do_not_cause_error PASSED [ 50%]
+tests/test_mapper.py::TestColumnSanitization::test_sanitization_preserves_correct_mapping_after_normalization PASSED [ 50%]
+tests/test_mapper.py::TestMapperIntegration::test_sample_basic_csv_columns_map_completely PASSED [ 50%]
+tests/test_mapper.py::TestMapperIntegration::test_mapper_output_values_are_strings_or_none PASSED [ 51%]
+tests/test_mapper.py::TestMapperIntegration::test_mapped_value_exists_in_input_columns PASSED [ 51%]
+tests/test_mapper.py::TestMapperIntegration::test_one_to_one_mapping_no_duplicate_targets PASSED [ 51%]
+tests/test_mapper.py::TestMapperIntegration::test_ambiguous_columns_pick_best_match PASSED [ 52%]
+tests/test_metrics.py::TestMRR::test_mrr_positive PASSED                 [ 52%]
+tests/test_metrics.py::TestMRR::test_mrr_excludes_zero PASSED            [ 52%]
+tests/test_metrics.py::TestMRR::test_mrr_excludes_negatives PASSED       [ 53%]
+tests/test_metrics.py::TestMRR::test_mrr_multi_row_per_customer PASSED   [ 53%]
+tests/test_metrics.py::TestMRR::test_mrr_no_active_rows_returns_zero PASSED [ 53%]
+tests/test_metrics.py::TestARR::test_arr PASSED                          [ 54%]
+tests/test_metrics.py::TestARPU::test_arpu_basic PASSED                  [ 54%]
+tests/test_metrics.py::TestARPU::test_arpu_zero_active PASSED            [ 54%]
+tests/test_metrics.py::TestARPU::test_arpu_amount_zero_not_active_row PASSED [ 55%]
+tests/test_metrics.py::TestTotalRevenue::test_total_revenue_all_positive PASSED [ 55%]
+tests/test_metrics.py::TestTotalRevenue::test_total_revenue_excludes_negatives PASSED [ 55%]
+tests/test_metrics.py::TestNewMRR::test_new_mrr_correct_value PASSED     [ 56%]
+tests/test_metrics.py::TestNewMRR::test_new_mrr_excludes_reactivated PASSED [ 56%]
+tests/test_metrics.py::TestReactivationMRR::test_reactivation_mrr_counts_returning PASSED [ 56%]
+tests/test_metrics.py::TestReactivationMRR::test_reactivation_mrr_excludes_annual PASSED [ 57%]
+tests/test_metrics.py::TestReactivationMRR::test_reactivation_mrr_absent_1_month_not_counted PASSED [ 57%]
+tests/test_metrics.py::TestReactivationMRR::test_reactivation_mrr_absent_10_months_not_counted PASSED [ 57%]
+tests/test_metrics.py::TestGrowthRate::test_growth_rate_positive PASSED  [ 58%]
+tests/test_metrics.py::TestGrowthRate::test_growth_rate_none_no_prev_month PASSED [ 58%]
+tests/test_metrics.py::TestGrowthRate::test_growth_rate_none_prev_mrr_zero PASSED [ 58%]
+tests/test_metrics.py::TestGrowthRate::test_growth_rate_none_gap PASSED  [ 59%]
+tests/test_metrics.py::TestGrowthRate::test_growth_rate_negative PASSED  [ 59%]
+tests/test_metrics.py::TestNewSubscribers::test_new_subscribers_count PASSED [ 59%]
+tests/test_metrics.py::TestNewSubscribers::test_new_subscribers_zero_when_all_existing PASSED [ 60%]
+tests/test_metrics.py::TestReactivatedSubscribers::test_reactivated_count PASSED [ 60%]
+tests/test_metrics.py::TestReactivatedSubscribers::test_reactivated_excludes_annual PASSED [ 60%]
+tests/test_metrics.py::TestReactivatedSubscribers::test_reactivated_zero_when_no_returning PASSED [ 61%]
+tests/test_metrics.py::TestChurnRate::test_churn_rate_basic PASSED       [ 61%]
+tests/test_metrics.py::TestChurnRate::test_churn_rate_none_no_prev PASSED [ 61%]
+tests/test_metrics.py::TestChurnRate::test_churn_rate_none_active_prev_zero PASSED [ 62%]
+tests/test_metrics.py::TestChurnRate::test_churn_rate_zero_no_lost PASSED [ 62%]
+tests/test_metrics.py::TestRevenueChurn::test_revenue_churn_scenario_a PASSED [ 62%]
+tests/test_metrics.py::TestRevenueChurn::test_revenue_churn_scenario_b PASSED [ 63%]
+tests/test_metrics.py::TestRevenueChurn::test_revenue_churn_scenario_c PASSED [ 63%]
+tests/test_metrics.py::TestRevenueChurn::test_revenue_churn_scenario_d PASSED [ 63%]
+tests/test_metrics.py::TestNRR::test_nrr_basic PASSED                    [ 64%]
+tests/test_metrics.py::TestNRR::test_nrr_clamped_upper PASSED            [ 64%]
+tests/test_metrics.py::TestNRR::test_nrr_none_no_prev PASSED             [ 64%]
+tests/test_metrics.py::TestNRR::test_nrr_none_prev_mrr_zero PASSED       [ 65%]
+tests/test_metrics.py::TestNRR::test_nrr_display_warning_above_200 PASSED [ 65%]
+tests/test_metrics.py::TestLTV::test_ltv_normal PASSED                   [ 65%]
+tests/test_metrics.py::TestLTV::test_ltv_churn_zero PASSED               [ 66%]
+tests/test_metrics.py::TestLTV::test_ltv_cap_36_months PASSED            [ 66%]
+tests/test_metrics.py::TestLTV::test_ltv_cap_note_do_not_use_for_unit_economics PASSED [ 66%]
+tests/test_metrics.py::TestActiveSubscribers::test_active_subscribers_count PASSED [ 67%]
+tests/test_metrics.py::TestActiveSubscribers::test_active_subscribers_excludes_churned PASSED [ 67%]
+tests/test_metrics.py::TestLostSubscribers::test_lost_subscribers_count PASSED [ 67%]
+tests/test_metrics.py::TestLostSubscribers::test_lost_subscribers_none_no_prev PASSED [ 68%]
+tests/test_metrics.py::TestLostSubscribers::test_lost_subscribers_zero_no_churn PASSED [ 68%]
+tests/test_metrics.py::TestExistingSubscribers::test_existing_subscribers_count PASSED [ 68%]
+tests/test_metrics.py::TestExistingSubscribers::test_existing_subscribers_excludes_new PASSED [ 69%]
+tests/test_metrics.py::TestCohortTable::test_cohort_returns_dataframe PASSED [ 69%]
+tests/test_metrics.py::TestCohortTable::test_cohort_returns_none_below_min PASSED [ 69%]
+tests/test_metrics.py::TestCohortTable::test_cohort_retained_active_zero_amount_counts PASSED [ 70%]
+tests/test_metrics.py::TestCohortTable::test_cohort_max_12_cohorts PASSED [ 70%]
+tests/test_metrics.py::TestCohortTable::test_cohort_entry_requires_amount_positive PASSED [ 70%]
+tests/test_metrics.py::TestComputeTimeContext::test_compute_time_context_deterministic PASSED [ 71%]
+tests/test_metrics.py::TestComputeTimeContext::test_compute_time_context_keys PASSED [ 71%]
+tests/test_metrics.py::TestComputeTimeContext::test_compute_time_context_gap_detected PASSED [ 71%]
+tests/test_metrics.py::TestComputeTimeContext::test_compute_time_context_ok_status PASSED [ 72%]
+tests/test_metrics.py::TestComputeTimeContext::test_compute_time_context_prev_month_calendar_order PASSED [ 72%]
+tests/test_metrics.py::TestGetAllMetrics::test_get_all_metrics_returns_dict PASSED [ 72%]
+tests/test_metrics.py::TestGetAllMetrics::test_get_all_metrics_contains_expected_keys PASSED [ 73%]
+tests/test_metrics.py::TestGetAllMetrics::test_get_all_metrics_no_ui_state_keys PASSED [ 73%]
+tests/test_metrics.py::TestGetAllMetrics::test_get_all_metrics_values_consistent PASSED [ 73%]
+tests/test_metrics.py::TestGetDataQualityFlags::test_get_data_quality_flags_returns_dict PASSED [ 74%]
+tests/test_metrics.py::TestGetDataQualityFlags::test_get_data_quality_flags_keys PASSED [ 74%]
+tests/test_metrics.py::TestGetDataQualityFlags::test_last_month_fallback_triggered PASSED [ 74%]
+tests/test_metrics.py::TestGetDataQualityFlags::test_last_month_fallback_not_triggered PASSED [ 75%]
+tests/test_metrics.py::TestGetDataQualityFlags::test_data_quality_flags_gap_status PASSED [ 75%]
+tests/test_payments.py::TestSuccessClearsWarning::test_success_clears_warning_flag FAILED [ 75%]
+tests/test_payments.py::TestSuccessClearsWarning::test_success_pops_warning_reason FAILED [ 76%]
+tests/test_payments.py::TestSuccessClearsWarning::test_success_updates_user_plan_in_session FAILED [ 76%]
+tests/test_payments.py::TestSuccessClearsWarning::test_success_spinner_always_shown PASSED [ 76%]
+tests/test_payments.py::Test429RetriesOnce::test_429_waits_one_second_before_retry PASSED [ 77%]
+tests/test_payments.py::Test429RetriesOnce::test_429_retries_exactly_once PASSED [ 77%]
+tests/test_payments.py::Test429RetriesOnce::test_429_persistent_returns_free_without_cache PASSED [ 77%]
+tests/test_payments.py::Test429RetriesOnce::test_429_persistent_returns_cached_plan_when_available FAILED [ 78%]
+tests/test_payments.py::Test429RetriesOnce::test_429_sets_subscription_warning_true PASSED [ 78%]
+tests/test_payments.py::TestSentryTagsDistinct::test_sentry_tag_no_cache_on_error_without_cache PASSED [ 78%]
+tests/test_payments.py::TestSentryTagsDistinct::test_sentry_tag_api_error_on_error_with_cache FAILED [ 79%]
+tests/test_payments.py::TestSentryTagsDistinct::test_sentry_tags_are_distinct_between_scenarios FAILED [ 79%]
+tests/test_payments.py::TestSentryTagsDistinct::test_http_401_returns_free_and_logs_sentry PASSED [ 79%]
+tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_from_starter_to_free_updates_session FAILED [ 80%]
+tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_from_pro_to_starter_updates_session FAILED [ 80%]
+tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_clears_warning_on_successful_api_call FAILED [ 80%]
+tests/test_payments.py::TestPostUpgradeMessageShown::test_post_upgrade_warning_message_shown_on_api_error PASSED [ 81%]
+tests/test_payments.py::TestPostUpgradeMessageShown::test_post_upgrade_message_exact_text_if_shown_directly PASSED [ 81%]
+tests/test_payments.py::TestPostUpgradeMessageShown::test_no_post_upgrade_message_on_clean_success FAILED [ 81%]
+tests/test_payments.py::TestPostUpgradeMessageShown::test_requests_timeout_is_5_seconds PASSED [ 82%]
+tests/test_payments.py::TestEdgeCases::test_error_no_cache_sets_reason_no_cache PASSED [ 82%]
+tests/test_payments.py::TestEdgeCases::test_error_with_cache_sets_reason_api_error FAILED [ 82%]
+tests/test_payments.py::TestEdgeCases::test_valid_plan_values_only PASSED [ 83%]
+tests/test_payments.py::TestEdgeCases::test_error_no_cache_returns_free PASSED [ 83%]
+tests/test_payments.py::TestEdgeCases::test_error_sets_subscription_warning_true PASSED [ 83%]
+tests/test_session.py::TestMaxAgeExpires::test_max_age_expires PASSED    [ 84%]
+tests/test_session.py::TestMaxAgeExpires::test_max_age_not_expired_within_limit PASSED [ 84%]
+tests/test_session.py::TestMaxAgeExpires::test_max_age_exactly_at_boundary PASSED [ 84%]
+tests/test_session.py::TestMaxAgeExpires::test_missing_session_start_is_expired PASSED [ 85%]
+tests/test_session.py::TestIdleExpires::test_idle_expires PASSED         [ 85%]
+tests/test_session.py::TestIdleExpires::test_idle_not_expired_within_limit PASSED [ 85%]
+tests/test_session.py::TestIdleExpires::test_idle_no_last_activity_key PASSED [ 86%]
+tests/test_session.py::TestRenderDoesNotResetIdle::test_render_does_not_reset_idle PASSED [ 86%]
+tests/test_session.py::TestRenderDoesNotResetIdle::test_explicit_action_resets_idle PASSED [ 86%]
+tests/test_session.py::TestKeepAliveCalledOncePerDay::test_keep_alive_called_once_per_day PASSED [ 87%]
+tests/test_session.py::TestKeepAliveCalledOncePerDay::test_keep_alive_called_when_date_is_yesterday PASSED [ 87%]
+tests/test_session.py::TestKeepAliveSkippedSameDay::test_keep_alive_skipped_same_day PASSED [ 87%]
+tests/test_session.py::TestKeepAliveSkippedSameDay::test_keep_alive_skipped_twice_in_same_day PASSED [ 88%]
+tests/test_session.py::TestKeepAliveSkippedSameDay::test_keep_alive_failure_does_not_set_date PASSED [ 88%]
+tests/test_session.py::TestKeepAliveSkippedSameDay::test_keep_alive_skipped_when_last_date_is_datetime_not_date PASSED [ 88%]
+tests/test_session.py::TestKeepAliveNotInsideVerifyMagicLink::test_keep_alive_not_inside_verify_magic_link PASSED [ 89%]
+tests/test_session.py::TestKeepAliveNotInsideVerifyMagicLink::test_keep_alive_called_after_verify_not_inside PASSED [ 89%]
+tests/test_session.py::TestKeepAliveNotInsideVerifyMagicLink::test_verify_magic_link_failure_does_not_trigger_keepalive PASSED [ 89%]
+tests/test_session.py::TestKeepAliveNotInsideVerifyMagicLink::test_keep_alive_failure_does_not_raise PASSED [ 90%]
+tests/test_session.py::TestSessionStateStructure::test_last_keepalive_date_is_date_type PASSED [ 90%]
+tests/test_session.py::TestSessionStateStructure::test_session_start_is_float PASSED [ 90%]
+tests/test_session.py::TestSessionStateStructure::test_last_activity_is_float PASSED [ 91%]
+tests/test_session.py::TestSessionStateStructure::test_magic_link_last_sent_is_float PASSED [ 91%]
+tests/test_session.py::TestSessionStateStructure::test_magic_link_cooldown_enforced PASSED [ 91%]
+tests/test_session.py::TestSessionStateStructure::test_subscription_warning_is_bool PASSED [ 92%]
+tests/test_session.py::TestSessionStateStructure::test_subscription_warning_reason_is_str PASSED [ 92%]
+tests/test_session.py::TestSessionStateStructure::test_user_plan_valid_values PASSED [ 92%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_zero_inputs_returns_base_decayed PASSED [ 93%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_zero_inputs_mrr_is_non_negative PASSED [ 93%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_churn_reduction_lowers_decay PASSED [ 93%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_churn_reduction_full_stops_decay PASSED [ 94%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_new_customers_increases_mrr PASSED [ 94%]
+tests/test_simulation.py::TestSimulationBasicBehaviour::test_price_increase_increases_mrr PASSED [ 94%]
+tests/test_simulation.py::TestSimulationEdgeCases::test_mrr_change_pct_none_when_base_zero PASSED [ 95%]
+tests/test_simulation.py::TestSimulationEdgeCases::test_mrr_change_pct_is_float_when_base_nonzero PASSED [ 95%]
+tests/test_simulation.py::TestSimulationEdgeCases::test_none_guard_no_typeerror PASSED [ 95%]
+tests/test_simulation.py::TestSimulationEdgeCases::test_simulation_horizon_12_months PASSED [ 96%]
+tests/test_simulation.py::TestSimulationEdgeCases::test_input_ranges_boundary_values PASSED [ 96%]
+tests/test_simulation.py::TestSimulationParameters::test_churn_reduction_range_lower_bound PASSED [ 96%]
+tests/test_simulation.py::TestSimulationParameters::test_churn_reduction_range_upper_bound PASSED [ 97%]
+tests/test_simulation.py::TestSimulationParameters::test_price_increase_negative_allowed PASSED [ 97%]
+tests/test_simulation.py::TestSimulationParameters::test_new_customers_upper_bound PASSED [ 97%]
+tests/test_simulation.py::TestSimulationParameters::test_result_dict_contains_required_keys PASSED [ 98%]
+tests/test_simulation.py::TestBaseArpuZeroGuard::test_base_arpu_zero_returns_none PASSED [ 98%]
+tests/test_simulation.py::TestBaseArpuZeroGuard::test_base_arpu_zero_returns_none_with_price_increase PASSED [ 98%]
+tests/test_simulation.py::TestBaseArpuZeroGuard::test_base_arpu_zero_shows_warning PASSED [ 99%]
+tests/test_simulation.py::TestBaseArpuZeroGuard::test_base_arpu_zero_does_not_proceed PASSED [ 99%]
+tests/test_simulation.py::TestSimulationWithFileFixtures::test_file_fixture_zero_arpu_returns_none PASSED [ 99%]
+tests/test_simulation.py::TestSimulationWithFileFixtures::test_file_fixture_basic_returns_dict PASSED [100%]
+
+================================== FAILURES ===================================
+__________________ TestSixPlusMonths.test_optimistic_formula __________________
+tests\test_forecast.py:431: in test_optimistic_formula
+    assert abs(o - expected) < 0.01, (
+E   AssertionError: Оптимистичный сценарий неверен на позиции 0: ожидалось 0.0000, получено 320.0000 (Section 10)
+E   assert 320.00000231115524 < 0.01
+E    +  where 320.00000231115524 = abs((320.00000231115524 - 0.0))
+___________ TestChurnFallback.test_churn_fallback_affects_scenarios ___________
+tests\test_forecast.py:569: in test_churn_fallback_affects_scenarios
+    assert abs(p - expected) < 0.01, (
+E   AssertionError: Pessimistic с fallback churn=0.05 неверен на позиции 0: ожидалось 1519.0880, получено 1504.0000 (Section 10)
+E   assert 15.088000108971073 < 0.01
+E    +  where 15.088000108971073 = abs((1504.00001086243 - 1519.088010971401))
+__________ TestSuccessClearsWarning.test_success_clears_warning_flag __________
+tests\test_payments.py:169: in test_success_clears_warning_flag
+    assert result == "starter", (
+E   AssertionError: Section 13: при HTTP 200 функция должна вернуть план из ответа API
+E   assert 'free' == 'starter'
+E     
+E     - starter
+E     + free
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+__________ TestSuccessClearsWarning.test_success_pops_warning_reason __________
+tests\test_payments.py:194: in test_success_pops_warning_reason
+    assert "subscription_warning_reason" not in state, (
+E   AssertionError: Section 13: subscription_warning_reason должен быть удалён (popped) после успешного ответа API
+E   assert 'subscription_warning_reason' not in {'subscription_warning': True, 'subscription_warning_reason': 'no_cache', 'user_email': 'user@example.com', 'user_plan': 'free'}
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+_____ TestSuccessClearsWarning.test_success_updates_user_plan_in_session ______
+tests\test_payments.py:216: in test_success_updates_user_plan_in_session
+    assert result == "pro"
+E   AssertionError: assert 'free' == 'pro'
+E     
+E     - pro
+E     + free
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+__ Test429RetriesOnce.test_429_persistent_returns_cached_plan_when_available __
+tests\test_payments.py:346: in test_429_persistent_returns_cached_plan_when_available
+    assert result == "pro", (
+E   AssertionError: Section 13: при повторном 429 при наличии кеша вернуть кешированный план
+E   assert 'free' == 'pro'
+E     
+E     - pro
+E     + free
+____ TestSentryTagsDistinct.test_sentry_tag_api_error_on_error_with_cache _____
+tests\test_payments.py:424: in test_sentry_tag_api_error_on_error_with_cache
+    assert result == "pro"  # возврат кешированного плана
+E   AssertionError: assert 'free' == 'pro'
+E     
+E     - pro
+E     + free
+------------------------------ Captured log call ------------------------------
+ERROR    subaudit:logger.py:158 Gumroad [KEY REDACTED] exception: Timeout
+___ TestSentryTagsDistinct.test_sentry_tags_are_distinct_between_scenarios ____
+tests\test_payments.py:478: in test_sentry_tags_are_distinct_between_scenarios
+    assert len(collected_tags["api_error"]) > 0, (
+E   AssertionError: Section 13: тег reason='api_error' должен быть записан в Sentry при ошибке с кешем
+E   assert 0 > 0
+E    +  where 0 = len([])
+------------------------------ Captured log call ------------------------------
+ERROR    subaudit:logger.py:158 Gumroad [KEY REDACTED] exception: err
+ERROR    subaudit:logger.py:158 Gumroad [KEY REDACTED] exception: err
+_ TestDowngradeUpdatesSession.test_downgrade_from_starter_to_free_updates_session _
+tests\test_payments.py:548: in test_downgrade_from_starter_to_free_updates_session
+    assert state["user_plan"] == "free", (
+E   AssertionError: Section 14: user_plan в session_state должен быть обновлён при downgrade
+E   assert 'starter' == 'free'
+E     
+E     - free
+E     + starter
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+_ TestDowngradeUpdatesSession.test_downgrade_from_pro_to_starter_updates_session _
+tests\test_payments.py:572: in test_downgrade_from_pro_to_starter_updates_session
+    assert result == "starter"
+E   AssertionError: assert 'free' == 'starter'
+E     
+E     - starter
+E     + free
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+_ TestDowngradeUpdatesSession.test_downgrade_clears_warning_on_successful_api_call _
+tests\test_payments.py:598: in test_downgrade_clears_warning_on_successful_api_call
+    assert state["subscription_warning"] is False
+E   assert True is False
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+__ TestPostUpgradeMessageShown.test_no_post_upgrade_message_on_clean_success __
+tests\test_payments.py:714: in test_no_post_upgrade_message_on_clean_success
+    assert clean_session_state["subscription_warning"] is False, (
+E   AssertionError: Section 13: при успешном ответе subscription_warning=False, пост-апгрейд сообщение не нужно
+E   assert True is False
+------------------------------ Captured log call ------------------------------
+WARNING  subaudit:logger.py:205 Gumroad API: success=false in response
+__________ TestEdgeCases.test_error_with_cache_sets_reason_api_error __________
+tests\test_payments.py:795: in test_error_with_cache_sets_reason_api_error
+    assert result == "pro"  # кешированный план
+E   AssertionError: assert 'free' == 'pro'
+E     
+E     - pro
+E     + free
+------------------------------ Captured log call ------------------------------
+ERROR    subaudit:logger.py:158 Gumroad [KEY REDACTED] exception: Timeout
+============================== warnings summary ===============================
+tests/test_payments.py::TestSuccessClearsWarning::test_success_clears_warning_flag
+  D:\Программирование\Проекты\SubAudit\venv\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet (7.4.3)/charset_normalizer (3.3.2) doesn't match a supported version!
+    warnings.warn(
+
+tests/test_session.py::TestKeepAliveCalledOncePerDay::test_keep_alive_called_once_per_day
+  D:\Программирование\Проекты\SubAudit\venv\Lib\site-packages\supabase\_async\auth_client.py:3: DeprecationWarning: The `gotrue` package is deprecated, is not going to receive updates in the future. Please, use `supabase_auth` instead.
+    from gotrue import (
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_forecast.py::TestSixPlusMonths::test_optimistic_formula - A...
+FAILED tests/test_forecast.py::TestChurnFallback::test_churn_fallback_affects_scenarios
+FAILED tests/test_payments.py::TestSuccessClearsWarning::test_success_clears_warning_flag
+FAILED tests/test_payments.py::TestSuccessClearsWarning::test_success_pops_warning_reason
+FAILED tests/test_payments.py::TestSuccessClearsWarning::test_success_updates_user_plan_in_session
+FAILED tests/test_payments.py::Test429RetriesOnce::test_429_persistent_returns_cached_plan_when_available
+FAILED tests/test_payments.py::TestSentryTagsDistinct::test_sentry_tag_api_error_on_error_with_cache
+FAILED tests/test_payments.py::TestSentryTagsDistinct::test_sentry_tags_are_distinct_between_scenarios
+FAILED tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_from_starter_to_free_updates_session
+FAILED tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_from_pro_to_starter_updates_session
+FAILED tests/test_payments.py::TestDowngradeUpdatesSession::test_downgrade_clears_warning_on_successful_api_call
+FAILED tests/test_payments.py::TestPostUpgradeMessageShown::test_no_post_upgrade_message_on_clean_success
+FAILED tests/test_payments.py::TestEdgeCases::test_error_with_cache_sets_reason_api_error
+================= 13 failed, 287 passed, 2 warnings in 35.76s =================

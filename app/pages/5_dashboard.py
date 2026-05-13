@@ -278,8 +278,9 @@ def _render_forecast(df: pd.DataFrame, plan: str, metrics: dict, currency: str) 
     future_index: list = forecast_result.get("future_index", [])
 
     # Сохраняем forecast_dict в session_state (Section 14)
-    # Export gate: None когда data_months_used < 6 (Section 10)
-    st.session_state["forecast_dict"] = forecast_result if data_months_used >= 6 else None
+    # forecast_result содержит данные при ≥3 месяцах (Section 10)
+    # Логика "только Realistic при 3-5 месяцах" обрабатывается в excel_builder.py
+    st.session_state["forecast_dict"] = forecast_result
 
     # 3–5 месяцев — только Realistic, предупреждение ДО графика (Section 10)
     if data_months_used < 6:
