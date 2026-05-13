@@ -185,11 +185,33 @@ def _determine_plan_from_sales(
     has_pro = False
     has_starter = False
 
+    # Логируем количество продаж для отладки
+    log_info(
+        f"Gumroad API: found {len(sales)} sale(s) for {email}",
+        extra={"email": email, "sales_count": len(sales)}
+    )
+
     for sale in sales:
         product_id = sale.get("product_id", "")
+        product_name = sale.get("product_name", "")
         # Проверяем что продажа не возвращена/отменена
         refunded = sale.get("refunded", False)
         chargedback = sale.get("chargedback", False)
+
+        # Детальное логирование каждой продажи
+        log_info(
+            f"Gumroad sale: product_id={product_id}, product_name={product_name}, "
+            f"refunded={refunded}, chargedback={chargedback}",
+            extra={
+                "product_id": product_id,
+                "product_name": product_name,
+                "refunded": refunded,
+                "chargedback": chargedback,
+                "expected_starter_id": starter_id,
+                "expected_pro_id": pro_id,
+            }
+        )
+
         if refunded or chargedback:
             continue
         if product_id == pro_id:
@@ -198,9 +220,13 @@ def _determine_plan_from_sales(
             has_starter = True
 
     if has_pro:
+        log_info(f"Gumroad: user {email} has PRO plan")
         return "pro"
     if has_starter:
+        log_info(f"Gumroad: user {email} has STARTER plan")
         return "starter"
+
+    log_info(f"Gumroad: user {email} has FREE plan (no matching sales)")
     return "free"
 
 

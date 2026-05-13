@@ -488,18 +488,25 @@ def main() -> None:
 
     st.divider()
 
-    # Кнопка ручного обновления статуса подписки (Section 13)
-    if st.button("🔄 Refresh subscription status"):
-        plan = _refresh_subscription(user_email)
-        st.rerun()
-
     # Section 13: post-upgrade delay — показываем если предупреждение сработало
     # сразу после апгрейда (пользователь мог только что оплатить)
     if st.session_state.get("subscription_warning") and plan == "free":
-        st.info(
-            "💡 If you just upgraded — payment processors may take up to 60 seconds. "
-            "Please refresh the page in a moment."
+        st.warning(
+            "⚠️ **Just completed payment?** Payment processors may take up to 60 seconds to sync. "
+            "Click the button below to check your subscription status."
         )
+
+    # Кнопка ручного обновления статуса подписки (Section 13)
+    # Делаем её более заметной с type="primary" и полной шириной
+    if st.button("🔄 Refresh subscription status", type="primary", use_container_width=True):
+        plan = _refresh_subscription(user_email)
+        st.rerun()
+
+    # Подсказка для пользователей
+    st.caption(
+        "💡 After completing payment in Gumroad, return here and click "
+        "**Refresh subscription status** to update your plan."
+    )
 
     st.divider()
 

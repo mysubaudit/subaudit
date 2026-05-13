@@ -247,7 +247,8 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
                 use_container_width=True,
             )
             st.caption(
-                "After payment, return to the site — your plan will update automatically."
+                "After payment, return to the **Account** page and click "
+                "**Refresh subscription status** to update your plan."
             )
 
 
@@ -341,10 +342,10 @@ def render_pricing_page() -> None:
     with st.expander("How quickly does a plan change take effect?"):
         # Section 13: post-upgrade delay / Checkpoint логика
         st.markdown(
-            "After payment via Gumroad, return to the site. "
+            "After payment via Gumroad, return to the site and go to the **Account** page. "
             "Payment processors may take **up to 60 seconds** to process the transaction. "
-            "If your plan hasn't updated — wait a moment and refresh the page. "
-            "Your status is checked automatically on login and dashboard load."
+            "Click the **🔄 Refresh subscription status** button to update your plan immediately. "
+            "Your status is also checked automatically on login and dashboard load."
         )
 
     with st.expander("Is my data stored on SubAudit servers?"):
