@@ -159,7 +159,7 @@ def _determine_plan_from_sales(
     if response.status_code == 401:
         # Section 13: HTTP 401 → Log Sentry, return 'free', warning=True
         _log_sentry("no_cache")
-        log_error("Gumroad API: HTTP 401 Unauthorized", email=email)
+        log_error("Gumroad API: HTTP 401 Unauthorized", extra={"email": email})
         return "401"  # Специальный маркер для обработки в вызывающем коде
 
     if response.status_code == 429:

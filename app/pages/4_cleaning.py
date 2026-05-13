@@ -234,7 +234,7 @@ def main() -> None:
             result = _run_cleaning_with_timeout(df_raw, column_mapping)
         except Exception as exc:
             # Необработанное исключение из clean_data()
-            log_error(f"Error during data cleaning: {exc}")
+            log_error("Error during data cleaning", exc=exc)
             st.error(
                 f"❌ An error occurred during data cleaning: {exc}\n\n"
                 "Please check your file and try again."
