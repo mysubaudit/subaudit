@@ -232,9 +232,10 @@ def _render_plan_card(plan: dict, current_plan: str, is_logged_in: bool) -> None
             # Авторизован — кнопка перехода на Gumroad checkout
             # URL берётся из st.secrets (Section 19: ключи только в Secrets UI)
             # Secrets: GUMROAD_CHECKOUT_STARTER, GUMROAD_CHECKOUT_PRO
+            # ?wanted=true — показывает поле для ввода купона на странице Gumroad
             gumroad_defaults = {
-                "starter": "https://subaudit.gumroad.com/l/starter",
-                "pro":     "https://subaudit.gumroad.com/l/pro",
+                "starter": "https://subaudit.gumroad.com/l/starter?wanted=true",
+                "pro":     "https://subaudit.gumroad.com/l/pro?wanted=true",
             }
             gumroad_url = st.secrets.get(
                 f"GUMROAD_CHECKOUT_{plan_id.upper()}",
