@@ -555,12 +555,14 @@ def _render_export(df: pd.DataFrame, plan: str, metrics: dict, currency: str) ->
                             "Your subscription was downgraded. Excel export requires Starter or PRO."
                         )
                     else:
+                        # Section 14: передаём все параметры согласно сигнатуре generate_excel()
                         excel_bytes: bytes = generate_excel(
-                            df=df,
-                            metrics=metrics,
+                            metrics_dict=metrics,
                             forecast_dict=forecast_dict,
                             simulation_dict=simulation_dict,
-                            plan=export_plan,
+                            cohort_df=metrics.get("cohort_table"),
+                            data_quality_flags=st.session_state.get("data_quality_flags", {}),
+                            user_plan=export_plan,
                             currency=currency,
                             company_name=company_name,
                         )
