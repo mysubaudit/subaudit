@@ -53,9 +53,15 @@ def _detect_encoding(raw_bytes: bytes) -> tuple[str, bool]:
     Определяет кодировку файла согласно Section 3:
     charset-normalizer → utf-8-sig → utf-8 → cp1251 → latin-1 (последний вариант).
     Возвращает (encoding, is_latin1_fallback).
+
+    Оптимизация: анализируем только первые 100KB для ускорения на больших файлах.
     """
+    # Оптимизация: charset-normalizer анализирует только первые 100KB
+    sample_size = min(100 * 1024, len(raw_bytes))
+    sample = raw_bytes[:sample_size]
+
     # Шаг 1: Проба через charset-normalizer
-    result = from_bytes(raw_bytes).best()
+    result = from_bytes(sample).best()
     if result is not None:
         detected = result.encoding.lower()
         # Нормализуем алиасы
@@ -71,7 +77,7 @@ def _detect_encoding(raw_bytes: bytes) -> tuple[str, bool]:
     # Шаг 2: Явный перебор по цепочке (Section 3)
     for enc in ("utf-8-sig", "utf-8", "cp1251"):
         try:
-            raw_bytes.decode(enc)
+            sample.decode(enc)
             return enc, False
         except (UnicodeDecodeError, LookupError):
             continue
@@ -97,10 +103,23 @@ def _read_csv(raw_bytes: bytes) -> tuple[pd.DataFrame | None, str]:
         )
 
     try:
-        df = pd.read_csv(io.BytesIO(raw_bytes), encoding=encoding, low_memory=False)
+        # Прогресс-бар для больших файлов
+        with st.spinner(f"Parsing CSV ({encoding})..."):
+            df = pd.read_csv(
+                io.BytesIO(raw_bytes),
+                encoding=encoding,
+                low_memory=False,
+                on_bad_lines='warn',  # Логируем проблемные строки вместо падения
+            )
         return df, ""
+    except pd.errors.EmptyDataError:
+        return None, "The CSV file is empty or contains no valid data."
+    except pd.errors.ParserError as exc:
+        return None, f"CSV parsing error: {exc}. Please check the file format."
+    except UnicodeDecodeError as exc:
+        return None, f"Encoding error ({encoding}): {exc}. The file may be corrupted."
     except Exception as exc:
-        return None, f"Could not read CSV ({encoding}): {exc}"
+        return None, f"Unexpected error reading CSV: {exc}"
 
 
 def _validate_and_truncate(
@@ -257,11 +276,20 @@ def main() -> None:
         st.stop()
 
     # -----------------------------------------------------------------------
-    # Валидация размера файла (Section 3: 15 МБ)
+    # Чтение файла в память с прогресс-баром (Section 3)
     # -----------------------------------------------------------------------
-    raw_bytes: bytes = uploaded_file.read()
+    with st.spinner("Loading file..."):
+        try:
+            raw_bytes: bytes = uploaded_file.read()
+        except Exception as exc:
+            st.error(f"❌ Failed to read file: {exc}. Please try uploading again.")
+            st.stop()
+
     file_size_bytes: int = len(raw_bytes)
 
+    # -----------------------------------------------------------------------
+    # Валидация размера файла (Section 3: 15 МБ)
+    # -----------------------------------------------------------------------
     if file_size_bytes > MAX_FILE_SIZE_BYTES:
         size_mb = file_size_bytes / (1024 * 1024)
         st.error(
@@ -272,9 +300,9 @@ def main() -> None:
 
     # -----------------------------------------------------------------------
     # Чтение CSV с определением кодировки (Section 3)
+    # Прогресс-бар показывается внутри _read_csv()
     # -----------------------------------------------------------------------
-    with st.spinner("Reading file..."):
-        df_raw, read_error = _read_csv(raw_bytes)
+    df_raw, read_error = _read_csv(raw_bytes)
 
     if df_raw is None:
         st.error(f"❌ Could not read the file: {read_error}")
