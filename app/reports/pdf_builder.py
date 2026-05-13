@@ -515,9 +515,9 @@ def _section_cohort(
     Block 5 — Cohort Table (Section 7, Section 9: Block 5).
     Доступен: Starter и Pro (Section 2).
     Минимум 3 когортных месяца — иначе None (Section 7).
-    Рендерим как таблицу: до 12 последних когорт (Section 7).
+    Рендерим как таблицу: до 8 последних когорт (оптимизировано для читаемости).
     """
-    story.append(Paragraph("Block 5 — Cohort Retention", styles["section_header"]))
+    story.append(Paragraph("Block 5 — Cohort Retention Analysis", styles["section_header"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_BORDER))
     story.append(Spacer(1, 4))
 
@@ -533,15 +533,15 @@ def _section_cohort(
         story.append(Spacer(1, 8))
         return
 
-    # Берём максимум 12 последних когорт (Section 7)
-    cohort_display = cohort_df.tail(12)
+    # Берём максимум 8 последних когорт (оптимизировано для книжного формата)
+    cohort_display = cohort_df.tail(8)
 
     # Строим заголовок таблицы
     col_labels = ["Cohort"] + list(cohort_display.columns)
     header_row = [Paragraph(str(c), ParagraphStyle(
         "ch",
         fontName="Helvetica-Bold",
-        fontSize=8,
+        fontSize=7,
         textColor=colors.white,
         alignment=TA_CENTER,
     )) for c in col_labels]
@@ -551,7 +551,7 @@ def _section_cohort(
         cells = [Paragraph(str(cohort_month), ParagraphStyle(
             "cb",
             fontName="Helvetica-Bold",
-            fontSize=8,
+            fontSize=7,
             textColor=_COLOR_SECONDARY,
         ))]
         for val in row:
@@ -562,16 +562,16 @@ def _section_cohort(
             cells.append(Paragraph(display_val, ParagraphStyle(
                 "cv",
                 fontName="Helvetica",
-                fontSize=8,
+                fontSize=7,
                 textColor=_COLOR_SECONDARY,
                 alignment=TA_CENTER,
             )))
         data_rows.append(cells)
 
-    # Авто-ширина колонок
+    # Оптимизированная ширина колонок для 8 когорт
     num_cols = len(col_labels)
-    col_widths = [page_width * 0.18] + [
-        page_width * 0.82 / max(num_cols - 1, 1)
+    col_widths = [page_width * 0.16] + [
+        page_width * 0.84 / max(num_cols - 1, 1)
     ] * (num_cols - 1)
 
     cohort_tbl = Table(data_rows, colWidths=col_widths)
@@ -586,16 +586,27 @@ def _section_cohort(
                  [_COLOR_LIGHT_BG, colors.white]),
                 ("BOX", (0, 0), (-1, -1), 0.5, _COLOR_BORDER),
                 ("LINEBELOW", (0, 0), (-1, -1), 0.3, _COLOR_BORDER),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ]
         )
     )
     story.append(cohort_tbl)
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 6))
+
+    # Легенда: объяснение retention % и цветовой раскраски
+    story.append(
+        Paragraph(
+            "<b>How to read:</b> Each cohort shows % of customers retained over time. "
+            "Month 0 = first purchase (always 100%). "
+            "Higher retention % = better customer loyalty.",
+            styles["body"],
+        )
+    )
+    story.append(Spacer(1, 3))
     story.append(
         Paragraph(
             "* Cohort retention: customer_id has ≥1 active row in that calendar month "
