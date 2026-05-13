@@ -525,7 +525,7 @@ def _render_export(df: pd.DataFrame, plan: str, metrics: dict, currency: str) ->
                 )
                 log_info(f"PDF exported. plan={export_plan}")
             except Exception as exc:
-                log_error(str(exc), exc=exc, context="pdf_export")
+                log_error("PDF generation failed", exc=exc, extra={"context": "pdf_export"})
                 st.error("PDF generation failed. Please try again.")
             finally:
                 st.session_state["pdf_generating"] = False
@@ -578,7 +578,7 @@ def _render_export(df: pd.DataFrame, plan: str, metrics: dict, currency: str) ->
                         )
                         log_info(f"Excel exported. plan={export_plan}")
                 except Exception as exc:
-                    log_error(exc, context="excel_export")
+                    log_error("Excel generation failed", exc=exc, extra={"context": "excel_export"})
                     st.error("Excel generation failed. Please try again.")
                 finally:
                     st.session_state["excel_generating"] = False
@@ -696,7 +696,7 @@ def main() -> None:
         metrics: dict = get_all_metrics(df)
         flags: dict = get_data_quality_flags(df)
     except Exception as exc:
-        log_error(exc, context="dashboard_metrics")
+        log_error("Dashboard metrics calculation failed", exc=exc, extra={"context": "dashboard_metrics"})
         st.error("Failed to compute metrics. Please re-upload your file.")
         return
 
