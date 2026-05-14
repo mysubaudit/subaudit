@@ -251,11 +251,17 @@ def main() -> None:
     )
 
     # -----------------------------------------------------------------------
-    # Виджет загрузки файла — 1 файл на сессию (Section 3)
+    # Виджет загрузки файла — label меняется если файл уже загружен
     # Все label/help тексты на английском (пользователь видит эти тексты)
     # -----------------------------------------------------------------------
+    file_uploader_label = (
+        "Upload different file"
+        if "df_raw" in st.session_state and st.session_state["df_raw"] is not None
+        else "Choose a CSV file with your subscription data"
+    )
+
     uploaded_file = st.file_uploader(
-        label="Choose a CSV file with your subscription data",
+        label=file_uploader_label,
         type=["csv"],                   # Только .csv (Section 3)
         accept_multiple_files=False,    # Section 3: 1 файл на сессию
         help="Only .csv format is supported. Maximum file size is 15 MB.",
@@ -264,6 +270,18 @@ def main() -> None:
     if uploaded_file is None:
         # Файл ещё не загружен — ждём
         st.stop()
+
+    # -----------------------------------------------------------------------
+    # ВАЖНО: Очищаем ВСЕ старые данные ПЕРЕД обработкой нового файла
+    # Это гарантирует, что пользователь не увидит данные предыдущего файла
+    # -----------------------------------------------------------------------
+    keys_to_clear = [
+        "df_raw", "df_clean", "column_mapping", "cleaning_report",
+        "metrics_dict", "data_quality_flags", "forecast_dict",
+        "simulation_dict", "currency", "company_name"
+    ]
+    for key in keys_to_clear:
+        st.session_state.pop(key, None)
 
     # -----------------------------------------------------------------------
     # Валидация расширения (Section 3: .csv only)
