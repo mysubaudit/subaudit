@@ -19,6 +19,7 @@ from app.core.cleaner import clean_data
 from app.core.mapper import apply_mapping
 from app.observability.logger import log_error, log_warning, log_info
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.ui_components import render_cta_button
 
 # ---------------------------------------------------------------------------
 # set_page_config — ПЕРВЫЙ вызов Streamlit, до любых st.* (Section 16 Step 3)
@@ -288,10 +289,13 @@ def main() -> None:
     with st.expander("🔍 Preview cleaned data (first 50 rows)"):
         st.dataframe(df_clean.head(50), use_container_width=True)
 
-    st.divider()
-
-    # Кнопка перехода к дашборду — на английском
-    st.page_link("pages/5_dashboard.py", label="Go to Dashboard →")
+    render_cta_button(
+        title="📊 Ready to Analyze Your Data?",
+        subtitle="View metrics, forecasts, and export reports",
+        button_label="🚀 Go to Dashboard",
+        target_page="pages/5_dashboard.py",
+        button_key="go_to_dashboard_btn",
+    )
 
 
 # ---------------------------------------------------------------------------

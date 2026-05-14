@@ -6,12 +6,15 @@ Spec v2.9 — Section 4, 16, 2
 CHANGELOG:
 - #pricing якоря → /pricing (реальная страница)
 - Nav "Pricing" → /pricing
-- Footer "Pricing" → /pricing  
+- Footer "Pricing" → /pricing
 - Hero "View pricing" → /pricing
 - Account кнопка в nav bar
 """
 
 import streamlit as st
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+from app.utils.ui_components import render_cta_button
 
 st.set_page_config(
     page_title="SubAudit — Subscription Analytics",
@@ -71,12 +74,44 @@ CUSTOM_CSS = """
 }
 .nav-logo {
     font-family: 'DM Serif Display', serif;
-    font-size: 20px;
+    font-size: 28px;
+    font-weight: 400;
     color: var(--text-primary);
     text-decoration: none !important;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.03em;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
-.nav-logo span { color: var(--accent); }
+.nav-logo:hover { opacity: 0.8; }
+.nav-logo .brand {
+    display: flex;
+    align-items: baseline;
+}
+.nav-logo .accent {
+    color: var(--accent);
+    font-weight: 600;
+}
+.nav-logo .tagline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #C9D1D9;
+    letter-spacing: 0;
+    position: relative;
+    padding-bottom: 2px;
+}
+.nav-logo .tagline::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+    opacity: 0.5;
+}
 .nav-links {
     display: flex;
     align-items: center;
@@ -459,7 +494,11 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <nav class="top-nav">
-    <a class="nav-logo" href="/" target="_self">Sub<span>Audit</span></a>
+    <a class="nav-logo" href="/" target="_self">
+        <span class="brand">Sub<span class="accent">Audit</span></span>
+        <span style="color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;">—</span>
+        <span class="tagline">Know your churn</span>
+    </a>
     <div class="nav-links">
         <a class="nav-link" href="/upload"  target="_self">Upload</a>
         <a class="nav-link" href="/pricing" target="_self">Pricing</a>
@@ -720,8 +759,13 @@ with col_c:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("→  Analyse my subscription data  —  it's free", key="cta_upload_bottom"):
-        st.switch_page("pages/2_upload.py")
+    render_cta_button(
+        title="🚀 Ready to Start?",
+        subtitle="Upload your CSV and get metrics in under a minute",
+        button_label="→ Analyse my subscription data — it's free",
+        target_page="pages/2_upload.py",
+        button_key="cta_upload_bottom",
+    )
 
 st.markdown("<div style='height: 48px;'></div>", unsafe_allow_html=True)
 

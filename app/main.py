@@ -274,7 +274,7 @@ def _render_sidebar_nav() -> None:
         )
         st.markdown("---")
 
-        st.caption("SubAudit v2.9")
+        st.caption("SubAudit v1.0")
 
 
 # ---------------------------------------------------------------------------

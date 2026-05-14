@@ -88,31 +88,30 @@ def run_simulation(
     # GUARD выше гарантирует base_arpu != 0
     new_arpu: float = base_arpu * (1.0 + price_increase)
 
-    # ─── 6. 12-месячный прогон симуляции ──────────────────────────────────────
+    # 6. 12-месячный прогон симуляции ──────────────────────────────────────
     # Section 11: "Base MRR decays exponentially each month by new_churn_rate —
     # correct SaaS churn modelling" / "cohort-based churn formula".
+    #
+    # ИСПРАВЛЕНО (2026-05-14): Churn применяется в КОНЦЕ месяца, а не в начале.
+    # Месяц 1 показывает MRR на НАЧАЛО первого месяца (до churn).
+    # Это даёт более точную симуляцию: новые клиенты не теряют churn в месяц добавления.
     #
     # Реализация cohort-based для ОБОИХ потоков (существующие + новые):
     #
     # Существующие подписчики:
-    #   base_subscribers убывает итеративно каждый месяц:
-    #   S_exist(N) = base_subscribers * (1 - r)^N
+    #   Месяц N показывает S₀ × (1-r)^(N-1) — churn применён (N-1) раз
     #   MRR_exist(N) = S_exist(N) * new_arpu
     #
-    # Новые подписчики (cohort-based, а не flat multiplier):
-    #   Каждый месяц new_customers_month добавляются в пул,
-    #   затем весь пул убывает на new_churn_fraction.
-    #   Это эквивалентно сумме когорт:
-    #   MRR_new(N) = new_customers_month * new_arpu *
-    #                sum((1-r)^k for k in 1..N)
-    #   Реализовано через накопительную переменную current_new_mrr —
-    #   математически идентично, но без вложенного цикла.
-    #
-    # Важно: flat multiplier (cumulative * new_arpu * (1-r)) НЕВЕРЕН —
-    # он не убывает когорты предыдущих месяцев правильно.
+    # Новые подписчики (cohort-based):
+    #   Каждый месяц new_customers_month добавляются БЕЗ churn,
+    #   затем весь пул убывает в КОНЦЕ месяца.
+    #   Месяц 1: 50 клиентов (churn ещё не применён)
+    #   Месяц 2: (50 + 50) × (1-r) после первого churn
+    #   Месяц 3: ((50 + 50) × (1-r) + 50) × (1-r)
 
     months: list[int] = list(range(1, 13))  # месяцы 1–12
     mrr_values: list[float] = []
+    monthly_data: list[dict] = []  # Детальные данные для Excel экспорта
 
     # Конвертируем base_mrr в количество подписчиков для корректного
     # применения price_increase (существующие клиенты переходят на new_arpu).
@@ -121,26 +120,57 @@ def run_simulation(
 
     # Накопительный MRR от новых клиентов — убывает каждый месяц как cohort
     current_new_mrr: float = 0.0
+    # Накопительное количество новых подписчиков (для отслеживания)
+    cumulative_new_subscribers: float = 0.0
+
+    prev_mrr: float = base_mrr  # Для расчёта MRR change
 
     for month in months:
-        # Существующая база убывает на new_churn_fraction за месяц
-        # (cohort-based: доля от ТЕКУЩЕЙ базы, а не от исходной)
+        # Сначала вычисляем MRR на НАЧАЛО месяца (до применения churn)
+        mrr_existing: float = current_existing_subscribers * new_arpu
+
+        # Добавляем новых клиентов этого месяца (они ещё не испытали churn)
+        cumulative_new_subscribers += new_customers_month
+        current_new_mrr += new_customers_month * new_arpu
+
+        # MRR на начало месяца = существующие + новые (до churn)
+        total_mrr: float = mrr_existing + current_new_mrr
+
+        # Защита от отрицательных значений
+        total_mrr = max(0.0, total_mrr)
+        mrr_values.append(total_mrr)
+
+        # Расчёт изменений для детального отчёта
+        mrr_change: float = total_mrr - prev_mrr
+        mrr_change_pct: float | None = (
+            (mrr_change / prev_mrr * 100.0) if prev_mrr != 0 else None
+        )
+
+        # Общее количество активных подписчиков на начало месяца
+        total_active_subscribers: float = current_existing_subscribers + cumulative_new_subscribers
+
+        # Сохраняем детальные данные для Excel
+        monthly_data.append({
+            "month": month,
+            "mrr": total_mrr,
+            "mrr_change": mrr_change,
+            "mrr_change_pct": mrr_change_pct,
+            "active_subscribers": round(total_active_subscribers),
+            "new_customers_added": new_customers_month,
+            "effective_churn_rate": new_churn_fraction * 100,  # в процентах
+        })
+
+        prev_mrr = total_mrr
+
+        # ПОСЛЕ записи результатов месяца применяем churn к КОНЦУ месяца
+        # (это повлияет на следующий месяц)
         current_existing_subscribers = current_existing_subscribers * (
             1.0 - new_churn_fraction
         )
-        mrr_existing: float = current_existing_subscribers * new_arpu
-
-        # Новые подписчики этого месяца добавляются в пул,
-        # затем ВЕСЬ пул (включая прежних новых) убывает на new_churn_fraction.
-        # Это корректный cohort-based подход: когорта месяца 1 убывает
-        # в месяцах 2, 3... так же, как и базовые подписчики.
-        current_new_mrr = (
-            current_new_mrr + new_customers_month * new_arpu
-        ) * (1.0 - new_churn_fraction)
-
-        total_mrr: float = mrr_existing + current_new_mrr
-        # Защита от отрицательных значений (аналог negative guard из Section 10)
-        mrr_values.append(max(0.0, total_mrr))
+        cumulative_new_subscribers = cumulative_new_subscribers * (
+            1.0 - new_churn_fraction
+        )
+        current_new_mrr = current_new_mrr * (1.0 - new_churn_fraction)
 
     # ─── 7. Итоговый MRR через 12 месяцев ─────────────────────────────────────
     final_mrr: float = mrr_values[-1]
@@ -157,6 +187,7 @@ def run_simulation(
     # "monthly_mrr" — каноническое имя ключа (Section 17: test_simulation.py).
     # "mrr_values" — алиас для совместимости с UI-кодом (5_dashboard.py,
     # pdf_builder.py). Оба ключа указывают на один объект — дублирования нет.
+    # "monthly_data" — детальные данные для Excel экспорта (новое в v1.0).
     simulation_result: dict = {
         # Входные параметры (для отображения в UI и PDF)
         "churn_reduction": churn_reduction,
@@ -173,6 +204,8 @@ def run_simulation(
         "monthly_mrr": mrr_values,
         # Алиас для обратной совместимости с UI-кодом (5_dashboard.py, pdf_builder.py)
         "mrr_values": mrr_values,
+        # Детальные данные по месяцам для Excel экспорта (v1.0)
+        "monthly_data": monthly_data,
         # Список номеров месяцев (1–12) для оси X на графике
         "months": months,
         # Итог

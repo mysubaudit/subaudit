@@ -22,6 +22,7 @@ import io
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.ui_components import render_cta_button
 
 # ---------------------------------------------------------------------------
 # set_page_config — ОБЯЗАН быть первым вызовом Streamlit (до inject_nav_css).
@@ -381,6 +382,43 @@ def main() -> None:
         st.caption(f"Detected currency: **{currency_value}**")
 
     # -----------------------------------------------------------------------
+    # Company Name (необязательное поле) — Section 14
+    # Используется для брендинга PDF/Excel отчётов и filename
+    # -----------------------------------------------------------------------
+    st.divider()
+    st.subheader("📝 Company Information (Optional)")
+    st.caption(
+        "Add your company name to personalize reports. "
+        "This will appear on PDF/Excel exports and in filenames."
+    )
+
+    company_name_input = st.text_input(
+        "Company or Business Name",
+        value=st.session_state.get("company_name", {}).get("display_name", ""),
+        placeholder="e.g., Acme Corp",
+        help="Optional. Leave empty if you prefer generic reports.",
+        key="company_name_input",
+    )
+
+    # Сохраняем в session_state (Section 14: company_name dict)
+    if company_name_input.strip():
+        # Очищаем для filename: только буквы, цифры, дефисы, подчёркивания
+        import re
+        filename_safe = re.sub(r'[^\w\s-]', '', company_name_input).strip()
+        filename_safe = re.sub(r'[-\s]+', '_', filename_safe).lower()
+
+        st.session_state["company_name"] = {
+            "display_name": company_name_input.strip(),
+            "filename_safe_name": filename_safe or "report",
+        }
+    else:
+        # Пустое значение — используем дефолт
+        st.session_state["company_name"] = {
+            "display_name": "",
+            "filename_safe_name": "report",
+        }
+
+    # -----------------------------------------------------------------------
     # Предпросмотр данных
     # -----------------------------------------------------------------------
     with st.expander("Preview data (first 10 rows)", expanded=False):
@@ -388,13 +426,14 @@ def main() -> None:
 
     # -----------------------------------------------------------------------
     # Навигация к следующему шагу (Section 16: Step 1 → Step 2 = 3_mapping.py)
-    # Текст кнопки на английском — пользователь видит
     # -----------------------------------------------------------------------
-    st.divider()
-    st.markdown("**Next step:** map your file columns to SubAudit fields.")
-
-    if st.button("▶ Continue to Column Mapping", type="primary", use_container_width=True):
-        st.switch_page("pages/3_mapping.py")
+    render_cta_button(
+        title="✅ File Uploaded Successfully!",
+        subtitle="Map your file columns to SubAudit fields",
+        button_label="▶ Continue to Column Mapping",
+        target_page="pages/3_mapping.py",
+        button_key="continue_to_mapping_btn",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@ from app.core.mapper import (
     auto_map_columns,
 )
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.ui_components import render_cta_button
 
 # ---------------------------------------------------------------------------
 # set_page_config — ПЕРВЫЙ вызов Streamlit, до любых st.* (Section 16 Step 2)
@@ -279,13 +280,12 @@ def render_mapping_page() -> None:
     # ------------------------------------------------------------------
     # Кнопка подтверждения + валидация — текст на английском
     # ------------------------------------------------------------------
-    confirm_clicked = st.button(
+    if st.button(
         "Confirm mapping →",
         type="primary",
         use_container_width=True,
-    )
-
-    if confirm_clicked:
+        key="confirm_mapping_btn_old",
+    ):
         # Валидация обязательных полей
         errors = _validate_mapping(current_mapping)
         # Проверка дублирования колонок
@@ -309,9 +309,18 @@ def render_mapping_page() -> None:
             if "_suggested_mapping" in st.session_state:
                 del st.session_state["_suggested_mapping"]
 
-            # Сообщение об успехе — на английском
-            st.success("Mapping saved. Proceeding to data cleaning...")
-            _go_to_cleaning()
+            # Переход к следующему шагу
+            st.rerun()
+
+    # Если маппинг уже сохранён, показываем CTA кнопку
+    if "column_mapping" in st.session_state:
+        render_cta_button(
+            title="✅ Mapping Confirmed!",
+            subtitle="Proceed to data cleaning and validation",
+            button_label="▶ Continue to Data Cleaning",
+            target_page="pages/4_cleaning.py",
+            button_key="continue_to_cleaning_btn",
+        )
 
     # ------------------------------------------------------------------
     # Кнопка «Назад» — на английском

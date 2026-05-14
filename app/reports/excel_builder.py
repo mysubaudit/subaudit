@@ -736,6 +736,31 @@ def _build_sheet_simulation(
     _style_header_row(ws, sim_data_start + 1, len(sim_headers))
 
     monthly_data: list[dict] = simulation_dict.get("monthly_data", [])
+
+    # Fallback: если monthly_data отсутствует (старые данные симуляции),
+    # строим его из mrr_values для обратной совместимости
+    if not monthly_data and "mrr_values" in simulation_dict:
+        mrr_values = simulation_dict.get("mrr_values", [])
+        base_mrr = simulation_dict.get("base_mrr", 0)
+        new_customers_month = simulation_dict.get("new_customers_month", 0)
+        new_churn_rate = simulation_dict.get("new_churn_rate", 0)
+
+        prev_mrr = base_mrr
+        for idx, mrr_val in enumerate(mrr_values):
+            mrr_change = mrr_val - prev_mrr
+            mrr_change_pct = (mrr_change / prev_mrr * 100.0) if prev_mrr != 0 else None
+
+            monthly_data.append({
+                "month": idx + 1,
+                "mrr": mrr_val,
+                "mrr_change": mrr_change,
+                "mrr_change_pct": mrr_change_pct,
+                "active_subscribers": "N/A",  # Не можем восстановить из старых данных
+                "new_customers_added": new_customers_month,
+                "effective_churn_rate": new_churn_rate,
+            })
+            prev_mrr = mrr_val
+
     symbols_map = {"USD": "$", "EUR": "€", "GBP": "£", "RUB": "₽"}
     curr_sym = symbols_map.get(currency.upper(), currency + " ")
 

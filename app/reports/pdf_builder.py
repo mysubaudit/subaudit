@@ -26,6 +26,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     HRFlowable,
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -516,14 +517,15 @@ def _section_cohort(
     Доступен: Starter и Pro (Section 2).
     Минимум 3 когортных месяца — иначе None (Section 7).
     Рендерим как таблицу: до 8 последних когорт (оптимизировано для читаемости).
+    Весь блок обёрнут в KeepTogether для предотвращения разрыва между страницами.
     """
-    story.append(Paragraph("Block 5 — Cohort Retention Analysis", styles["section_header"]))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_BORDER))
-    story.append(Spacer(1, 4))
-
     cohort_df = metrics.get("cohort_table")  # DataFrame или None (Section 9)
 
     if cohort_df is None:
+        # Если данных нет, добавляем простое сообщение без KeepTogether
+        story.append(Paragraph("Block 5 — Cohort Retention Analysis", styles["section_header"]))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_BORDER))
+        story.append(Spacer(1, 4))
         story.append(
             Paragraph(
                 "Cohort table not available — at least 3 distinct cohort months required.",
@@ -532,6 +534,14 @@ def _section_cohort(
         )
         story.append(Spacer(1, 8))
         return
+
+    # Создаём список элементов для KeepTogether
+    block_elements = []
+
+    # Заголовок секции
+    block_elements.append(Paragraph("Block 5 — Cohort Retention Analysis", styles["section_header"]))
+    block_elements.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_BORDER))
+    block_elements.append(Spacer(1, 4))
 
     # Берём максимум 8 последних когорт (оптимизировано для книжного формата)
     cohort_display = cohort_df.tail(8)
@@ -594,11 +604,11 @@ def _section_cohort(
             ]
         )
     )
-    story.append(cohort_tbl)
-    story.append(Spacer(1, 6))
+    block_elements.append(cohort_tbl)
+    block_elements.append(Spacer(1, 6))
 
     # Легенда: объяснение retention % и цветовой раскраски
-    story.append(
+    block_elements.append(
         Paragraph(
             "<b>How to read:</b> Each cohort shows % of customers retained over time. "
             "Month 0 = first purchase (always 100%). "
@@ -606,8 +616,8 @@ def _section_cohort(
             styles["body"],
         )
     )
-    story.append(Spacer(1, 3))
-    story.append(
+    block_elements.append(Spacer(1, 3))
+    block_elements.append(
         Paragraph(
             "* Cohort retention: customer_id has ≥1 active row in that calendar month "
             "(amount not checked — paused/discounted subscriptions count as retained). "
@@ -615,7 +625,10 @@ def _section_cohort(
             styles["limitation"],
         )
     )
-    story.append(Spacer(1, 8))
+    block_elements.append(Spacer(1, 8))
+
+    # Оборачиваем весь блок в KeepTogether для предотвращения разрыва
+    story.append(KeepTogether(block_elements))
 
 
 # ---------------------------------------------------------------------------
@@ -1006,7 +1019,7 @@ def generate_pdf(
         title="SubAudit Report",
         author="SubAudit",
         subject="Subscription Analytics",
-        creator="SubAudit v2.9",
+        creator="SubAudit v1.0",
     )
 
     # Переопределяем canvas фабрику для водяного знака
@@ -1070,6 +1083,8 @@ def generate_pdf(
     if plan in (_PLAN_STARTER, _PLAN_PRO):
         _section_retention(story, metrics_dict, currency, styles, usable_width)
         _section_health(story, metrics_dict, currency, styles, usable_width)
+        # Block 5 (Cohort Table) начинается с новой страницы для лучшей читаемости
+        story.append(PageBreak())
         _section_cohort(story, metrics_dict, styles, usable_width)
 
     # -----------------------------------------------------------------------
@@ -1102,7 +1117,7 @@ def generate_pdf(
 
     story.append(
         Paragraph(
-            f"SubAudit v2.9 · Generated {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} · "
+            f"SubAudit v1.0 · Generated {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} · "
             "Files are processed in-memory and NEVER stored or sent to third parties.",
             styles["footer_note"],
         )
