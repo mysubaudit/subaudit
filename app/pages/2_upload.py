@@ -223,6 +223,22 @@ def main() -> None:
     st.title("📂 Upload Your Data")
 
     # -----------------------------------------------------------------------
+    # Inline help tooltip — что ожидать от этой страницы
+    # -----------------------------------------------------------------------
+    st.markdown("""
+    Upload your CSV file with subscription data. We'll automatically detect the format and prepare it for analysis.
+
+    **What you need:**
+    - CSV file with customer transactions
+    - At least 3 months of historical data (recommended: 6+ months)
+    - Columns: Customer ID, Date, Amount, Status, Currency (optional)
+
+    **Processing time:** ~5-30 seconds depending on file size.
+
+    💡 **Tip:** Not sure about the format? Visit the [Help page](8_help.py) to download a sample CSV.
+    """)
+
+    # -----------------------------------------------------------------------
     # Section 3 / Section 4: обязательный notice о конфиденциальности —
     # VERBATIM, как указано в спецификации (ℹ блок в Section 3).
     # -----------------------------------------------------------------------

@@ -157,6 +157,26 @@ def render_mapping_page() -> None:
     st.caption("Step 2 of 4")
 
     # ------------------------------------------------------------------
+    # Inline help — что происходит на этой странице
+    # ------------------------------------------------------------------
+    st.markdown("""
+    SubAudit automatically detects your column names using fuzzy matching. Review the suggestions below and adjust if needed.
+
+    **Required fields (🔴):**
+    - **Customer ID**: Unique identifier for each customer
+    - **Date**: Billing date or period (YYYY-MM or YYYY-MM-DD)
+    - **Amount**: Subscription amount (MRR)
+    - **Status**: Subscription status (active, churned, trial, etc.)
+
+    **Optional fields (🟡):**
+    - **Currency**: Currency code (USD, EUR, etc.) — required only if you have multiple currencies
+
+    💡 **Tip:** Each CSV column can only be mapped to one field. If a column is used twice, you'll see an error.
+    """)
+
+    st.divider()
+
+    # ------------------------------------------------------------------
     # Guard: df_raw должен существовать в session_state (Section 14).
     # Если пользователь попал сюда без загруженного файла — отправляем назад.
     # ------------------------------------------------------------------

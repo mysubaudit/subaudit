@@ -102,13 +102,29 @@ def _render_block1_revenue(metrics: dict, currency: str) -> None:
     st.subheader("💰 Revenue")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("MRR", _fmt_currency(metrics.get("mrr"), currency))
+        st.metric(
+            "MRR",
+            _fmt_currency(metrics.get("mrr"), currency),
+            help="Monthly Recurring Revenue: total revenue from active subscriptions in the most recent month."
+        )
     with col2:
-        st.metric("ARR", _fmt_currency(metrics.get("arr"), currency))
+        st.metric(
+            "ARR",
+            _fmt_currency(metrics.get("arr"), currency),
+            help="Annual Recurring Revenue: MRR × 12. Standard metric for B2B SaaS valuation."
+        )
     with col3:
-        st.metric("ARPU", _fmt_currency(metrics.get("arpu"), currency))
+        st.metric(
+            "ARPU",
+            _fmt_currency(metrics.get("arpu"), currency),
+            help="Average Revenue Per User: MRR ÷ Active Subscribers. Shows pricing power and customer value."
+        )
     with col4:
-        st.metric("Total Revenue", _fmt_currency(metrics.get("total_revenue"), currency))
+        st.metric(
+            "Total Revenue",
+            _fmt_currency(metrics.get("total_revenue"), currency),
+            help="Sum of all revenue across all months in your dataset."
+        )
 
 
 def _render_block2_growth(metrics: dict, currency: str) -> None:
@@ -120,25 +136,35 @@ def _render_block2_growth(metrics: dict, currency: str) -> None:
     st.subheader("📈 Growth")
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.metric("New MRR", _fmt_currency(metrics.get("new_mrr"), currency))
+        st.metric(
+            "New MRR",
+            _fmt_currency(metrics.get("new_mrr"), currency),
+            help="Revenue from customers who appear for the first time in the most recent month."
+        )
     with col2:
         st.metric(
             "Reactivation MRR",
             _fmt_currency(metrics.get("reactivation_mrr"), currency),
+            help="Revenue from customers who returned after 2-9 months absence (excludes annual subscriptions)."
         )
     with col3:
         growth = metrics.get("growth_rate")
         st.metric(
             "MoM Growth",
             _fmt_pct(growth),
-            help="N/A when previous month data is unavailable or contains gaps (Section 6).",
+            help="Month-over-Month growth rate: (MRR_current - MRR_previous) / MRR_previous × 100%. N/A when previous month data is unavailable.",
         )
     with col4:
-        st.metric("New Subscribers", _fmt_int(metrics.get("new_subscribers")))
+        st.metric(
+            "New Subscribers",
+            _fmt_int(metrics.get("new_subscribers")),
+            help="Number of customers who appear for the first time in the most recent month."
+        )
     with col5:
         st.metric(
             "Reactivated Subscribers",
             _fmt_int(metrics.get("reactivated_subscribers")),
+            help="Number of customers who returned after 2-9 months absence."
         )
 
 
@@ -155,8 +181,8 @@ def _render_block3_retention(metrics: dict, currency: str) -> None:
     # NRR > 200% — предупреждение обязательно (Section 6)
     if nrr is not None and nrr > 200:
         st.warning(
-            "NRR exceeds 200% — likely caused by limited prior-month data. "
-            "Interpret with caution."
+            "⚠️ NRR exceeds 200% — likely caused by limited prior-month data. "
+            "This is common in early-stage datasets. Upload more historical data (6+ months) for accurate NRR."
         )
 
     col1, col2, col3 = st.columns(3)
@@ -164,19 +190,19 @@ def _render_block3_retention(metrics: dict, currency: str) -> None:
         st.metric(
             "Churn Rate",
             _fmt_pct(metrics.get("churn_rate")),
-            help="N/A when previous month data is unavailable (Section 6).",
+            help="Percentage of customers who cancelled in the most recent month. Formula: (Churned Subscribers / Active Subscribers Previous Month) × 100%. N/A when previous month data is unavailable.",
         )
     with col2:
         st.metric(
             "Revenue Churn",
             _fmt_currency(metrics.get("revenue_churn"), currency),
-            help="Four-scenario revenue churn (Section 8).",
+            help="Lost revenue from churned customers in the most recent month. Calculated using four-scenario logic (Section 8).",
         )
     with col3:
         st.metric(
             "NRR",
             _fmt_pct(nrr),
-            help="Net Revenue Retention clamped 0–999% (Section 6).",
+            help="Net Revenue Retention: percentage of revenue retained from existing customers, including expansions and contractions. NRR > 100% means you're growing revenue from existing customers. Clamped to 0–999%.",
         )
 
 
@@ -192,9 +218,10 @@ def _render_block4_health(metrics: dict, currency: str) -> None:
         st.metric(
             "LTV",
             _fmt_currency(metrics.get("ltv"), currency),
-            # Подсказка обязательна (Section 6 LTV info box)
             help=(
-                "LTV cap = 36 months (ARPU × 36). "
+                "Lifetime Value: expected total revenue from a customer over their entire subscription lifetime. "
+                "Formula: ARPU / Churn Rate. "
+                "⚠️ LTV is capped at 36 months (ARPU × 36). "
                 "At 2–3% monthly churn, true LTV is 33–108% higher than the capped value. "
                 "Do NOT use capped LTV for unit economics or CAC payback decisions."
             ),
@@ -203,17 +230,19 @@ def _render_block4_health(metrics: dict, currency: str) -> None:
         st.metric(
             "Active Subscribers",
             _fmt_int(metrics.get("active_subscribers")),
+            help="Number of customers with status='active' in the most recent month (excludes amount=0 and negative amounts)."
         )
     with col3:
         st.metric(
             "Lost Subscribers",
             _fmt_int(metrics.get("lost_subscribers")),
-            help="N/A when previous month data is unavailable (Section 6).",
+            help="Number of customers who churned in the most recent month. N/A when previous month data is unavailable.",
         )
     with col4:
         st.metric(
             "Existing Subscribers",
             _fmt_int(metrics.get("existing_subscribers")),
+            help="Number of customers who were active in both previous and current month (retained customers)."
         )
 
 
@@ -225,12 +254,23 @@ def _render_block5_cohort(metrics: dict) -> None:
     """
     st.subheader("🧩 Cohort Retention")
 
+    st.markdown("""
+    **How to read this table:**
+    - **Rows**: Each cohort (customers who started in a specific month)
+    - **Columns**: Months since cohort start (M0, M1, M2, ...)
+    - **Values**: Percentage of original cohort still active
+    - **Colors**: Green = high retention, Yellow = medium, Red = low retention
+
+    💡 **Tip:** Look for patterns — which cohorts retain better? When do customers typically churn?
+    """)
+
     cohort_df: pd.DataFrame | None = metrics.get("cohort_table")
 
     if cohort_df is None:
         # Section 7: требуется минимум 3 различных когортных месяца
         st.info(
-            "At least 3 distinct cohort months are required to display the cohort table."
+            "ℹ️ At least 3 distinct cohort months are required to display the cohort table. "
+            "Upload more historical data to see cohort retention analysis."
         )
         return
 
@@ -244,8 +284,9 @@ def _render_block5_cohort(metrics: dict) -> None:
         use_container_width=True,
     )
     st.caption(
-        "Retention %: retained_N ÷ cohort_size × 100. "
-        "Zero-amount active rows count as retained (paused/discounted — not churn). Section 7."
+        "📊 Retention is based on presence in data, not amount. "
+        "Customers with amount=0 are counted as retained (paused/discounted subscriptions). "
+        "This is intentional — see Section 7 of specification."
     )
 
 
