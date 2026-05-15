@@ -214,6 +214,8 @@ class TestSuccessClearsWarning:
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
+        mocker.patch("app.payments.gumroad._get_secrets",
+                     return_value=("test_token", "starter", "pro"))
         _mock_spinner(mocker)
 
         from app.payments.gumroad import get_subscription_status
@@ -261,6 +263,8 @@ class TestSuccessClearsWarning:
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
+        mocker.patch("app.payments.gumroad._get_secrets",
+                     return_value=("test_token", "starter", "pro"))
         _mock_spinner(mocker)
 
         from app.payments.gumroad import get_subscription_status
@@ -617,6 +621,8 @@ class TestDowngradeUpdatesSession:
         mocker.patch("app.payments.gumroad.requests.get",
                      return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state", state)
+        mocker.patch("app.payments.gumroad._get_secrets",
+                     return_value=("test_token", "starter", "pro"))
         _mock_spinner(mocker)
 
         from app.payments.gumroad import get_subscription_status
