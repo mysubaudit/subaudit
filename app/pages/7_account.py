@@ -111,8 +111,8 @@ def _render_plan_badge(plan: str) -> None:
     """
     plan_labels = {
         "free":    "🆓 FREE",
-        "starter": "⭐ STARTER — $19/mo",
-        "pro":     "🚀 PRO — $49/mo",
+        "starter": "⭐ STARTER — $9/mo",
+        "pro":     "🚀 PRO — $19/mo",
     }
     label = plan_labels.get(plan, "❓ Unknown plan")
     st.markdown(f"### Current plan: **{label}**")

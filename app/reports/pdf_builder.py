@@ -917,8 +917,8 @@ def _build_cover_page(
     story.append(Spacer(1, 4))
 
     # Указание плана
-    plan_display = {"free": "FREE", "starter": "Starter ($19/mo)",
-                    "pro": "Pro ($49/mo)"}.get(plan, plan.upper())
+    plan_display = {"free": "FREE", "starter": "Starter ($9/mo)",
+                    "pro": "Pro ($19/mo)"}.get(plan, plan.upper())
     story.append(Paragraph(f"Plan: {plan_display}", styles["doc_date"]))
 
     story.append(Spacer(1, 20 * mm))

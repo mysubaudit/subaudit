@@ -680,7 +680,7 @@ st.markdown("""
         <div class="pricing-card featured">
             <div class="pricing-badge">Most popular</div>
             <div class="plan-name">Starter</div>
-            <div class="plan-price">$19<sub>/mo</sub></div>
+            <div class="plan-price">$9<sub>/mo</sub></div>
             <div class="plan-tagline">For growing SaaS teams tracking monthly performance.</div>
             <ul class="plan-features">
                 <li><span class="check">✓</span> Up to 10,000 rows</li>
@@ -699,7 +699,7 @@ st.markdown("""
         <!-- PRO -->
         <div class="pricing-card">
             <div class="plan-name">Pro</div>
-            <div class="plan-price">$49<sub>/mo</sub></div>
+            <div class="plan-price">$19<sub>/mo</sub></div>
             <div class="plan-tagline">For established teams running scenario planning.</div>
             <ul class="plan-features">
                 <li><span class="check">✓</span> Up to 50,000 rows</li>
@@ -812,7 +812,7 @@ Access to paid features requires authentication via a magic link sent to your em
 **4. Subscription Plans and Billing**
 
 - **Free** plan: available without registration, limited to 1,000 rows per session.
-- **Starter** ($19/month) and **Pro** ($49/month) plans are billed as monthly recurring subscriptions through Gumroad.
+- **Starter** ($9/month) and **Pro** ($19/month) plans are billed as monthly recurring subscriptions through Gumroad.
 - Subscriptions renew automatically on the same day each month unless cancelled before the renewal date.
 - Plan features are enforced at the time of export. Downgrade mid-session may not be reflected until the next login.
 
