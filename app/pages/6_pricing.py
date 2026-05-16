@@ -96,7 +96,7 @@ PLANS: list[dict] = [
     {
         "id": "starter",
         "name": "STARTER",
-        "price": "$19",
+        "price": "$9",
         "price_sub": "/ month",           # пользователь видит
         "login_required": True,
         "max_rows": "10,000",
@@ -113,7 +113,7 @@ PLANS: list[dict] = [
     {
         "id": "pro",
         "name": "PRO",
-        "price": "$49",
+        "price": "$19",
         "price_sub": "/ month",           # пользователь видит
         "login_required": True,
         "max_rows": "50,000",
@@ -301,7 +301,7 @@ def render_pricing_page() -> None:
     st.subheader("📊 Full feature comparison")
 
     # Строим markdown-таблицу — заголовки и данные строго по Section 2
-    header = "| Feature | FREE | STARTER ($19/mo) | PRO ($49/mo) |"
+    header = "| Feature | FREE | STARTER ($9/mo) | PRO ($19/mo) |"
     divider_row = "|---|:---:|:---:|:---:|"
 
     rows = [header, divider_row]
