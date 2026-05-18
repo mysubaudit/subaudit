@@ -153,7 +153,39 @@ def _clear_session() -> None:
 # Session Guards (Section 14)
 # ---------------------------------------------------------------------------
 
+# Публичные страницы, которые не требуют авторизации и session guards
+PUBLIC_PAGES = {
+    "pages/1_landing.py",
+    "pages/6_pricing.py",
+}
+
+
+def _is_public_page() -> bool:
+    """
+    Проверяет, является ли текущая страница публичной.
+    Публичные страницы не требуют session guards.
+    """
+    # Streamlit не предоставляет прямого API для определения текущей страницы,
+    # но мы можем проверить query params или использовать другие методы.
+    # Для простоты: если пользователь не залогинен и нет данных — считаем публичной.
+    # Более точный способ — проверить st.session_state или URL.
+
+    # Если это первый визит (нет email, нет данных) — разрешаем доступ
+    has_data = st.session_state.get("df_clean") is not None
+    user_logged_in = bool(st.session_state.get("user_email"))
+
+    # Если нет данных и не залогинен — публичная страница (landing/pricing)
+    if not has_data and not user_logged_in:
+        return True
+
+    return False
+
+
 def _enforce_session_guards() -> None:
+    # Пропускаем guards для публичных страниц
+    if _is_public_page():
+        return
+
     now: float = time.time()
 
     session_age: float = now - st.session_state.get("session_start", now)
