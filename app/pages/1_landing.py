@@ -524,7 +524,7 @@ st.markdown("""
     </p>
     <div class="hero-cta-row">
         <a class="btn-primary" href="/upload" target="_self">
-            → &nbsp;Analyse my data — it's free
+            → &nbsp;Analyze my data — it's free
         </a>
         <a class="btn-secondary" href="/pricing" target="_self">
             View pricing ↓
@@ -540,7 +540,7 @@ st.markdown("""
             <div class="stat-label">From upload to insight</div>
         </div>
         <div class="stat-item">
-            <div class="stat-number">50 k</div>
+            <div class="stat-number">50K</div>
             <div class="stat-label">Max rows (Pro plan)</div>
         </div>
         <div class="stat-item">
@@ -598,7 +598,7 @@ st.markdown("""
             <span class="feature-icon">🗂️</span>
             <div class="feature-name">Block 5 — Cohort Analysis</div>
             <div class="feature-desc">
-                Up to 12 rolling monthly cohorts with RdYlGn heatmap.
+                Up to 12 rolling monthly cohorts with color-coded heatmap.
                 Paused accounts count as retained — correct SaaS semantics.
             </div>
         </div>
@@ -762,7 +762,7 @@ with col_c:
     render_cta_button(
         title="🚀 Ready to Start?",
         subtitle="Upload your CSV and get metrics in under a minute",
-        button_label="→ Analyse my subscription data — it's free",
+        button_label="→ Analyze my subscription data — it's free",
         target_page="pages/2_upload.py",
         button_key="cta_upload_bottom",
     )
