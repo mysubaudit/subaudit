@@ -10,7 +10,7 @@ test_presets.py
 import pandas as pd
 import pytest
 
-from app.core.presets import detect_preset, ALL_PRESETS, _PRESET_SIGNATURES
+from app.core.presets import detect_preset, ALL_PRESETS, _PRESET_SIGNATURES, get_preset_mapping
 
 
 # ===========================================================================
@@ -249,3 +249,96 @@ class TestSignatureConsistency:
     def test_all_presets_in_all_presets_list(self):
         """ALL_PRESETS синхронизирован с _PRESET_SIGNATURES."""
         assert set(ALL_PRESETS) == set(_PRESET_SIGNATURES.keys())
+
+
+# ===========================================================================
+# ГРУППА 9 — get_preset_mapping() (v3.2.4)
+# ===========================================================================
+
+class TestGetPresetMapping:
+    """
+    v3.2.4: Тесты для get_preset_mapping() — получение mapping-правил
+    для конкретного пресета, используется на mapping-странице.
+    """
+
+    def test_stripe_mapping_returns_correct_dict(self):
+        """Stripe: customer_id→customer_id, date→created, amount→amount, status→status."""
+        result = get_preset_mapping("stripe")
+        assert result == {
+            "customer_id": "customer_id",
+            "date": "created",
+            "amount": "amount",
+            "status": "status",
+        }
+
+    def test_gumroad_mapping_returns_correct_dict(self):
+        """Gumroad: email как customer_id, cancelled как status."""
+        result = get_preset_mapping("gumroad")
+        assert result == {
+            "customer_id": "email",
+            "date": "created_at",
+            "amount": "price",
+            "status": "cancelled",
+        }
+
+    def test_lemonsqueezy_mapping_returns_correct_dict(self):
+        """LemonSqueezy: customer_email, total."""
+        result = get_preset_mapping("lemonsqueezy")
+        assert result == {
+            "customer_id": "customer_email",
+            "date": "created_at",
+            "amount": "total",
+            "status": "status",
+        }
+
+    def test_all_presets_return_valid_mapping(self):
+        """Каждый пресет возвращает словарь с 4 обязательными полями."""
+        required = {"customer_id", "date", "amount", "status"}
+        for preset_name in ALL_PRESETS:
+            result = get_preset_mapping(preset_name)
+            assert isinstance(result, dict), (
+                f"get_preset_mapping('{preset_name}') должен вернуть dict"
+            )
+            # Каждое поле — непустая строка
+            for field in required:
+                assert field in result, (
+                    f"Поле '{field}' отсутствует в mapping'е для пресета '{preset_name}'"
+                )
+                assert isinstance(result[field], str) and result[field], (
+                    f"Значение для '{field}' в пресете '{preset_name}' "
+                    f"должно быть непустой строкой"
+                )
+
+    def test_unknown_preset_raises_value_error(self):
+        """Неизвестный пресет → ValueError."""
+        with pytest.raises(ValueError, match="Unknown preset"):
+            get_preset_mapping("unknown")
+
+    def test_unknown_preset_raises_value_error_message_contains_name(self):
+        """Сообщение об ошибке содержит имя неизвестного пресета."""
+        with pytest.raises(ValueError, match="foobar"):
+            get_preset_mapping("foobar")
+
+    def test_returned_dict_is_independent_copy(self):
+        """
+        Возвращаемый словарь — копия, мутация не влияет на оригинал.
+        Защита от случайной порчи _PRESET_SIGNATURES.
+        """
+        original = _PRESET_SIGNATURES["stripe"].copy()
+        result = get_preset_mapping("stripe")
+        # Мутируем результат
+        result["customer_id"] = "hacked"
+        # Оригинал не должен измениться
+        assert _PRESET_SIGNATURES["stripe"] == original, (
+            "Мутация результата get_preset_mapping() не должна влиять на _PRESET_SIGNATURES"
+        )
+
+    def test_mapping_values_are_lowercase(self):
+        """Все значения в сигнатурах — в нижнем регистре."""
+        for preset_name in ALL_PRESETS:
+            result = get_preset_mapping(preset_name)
+            for field, value in result.items():
+                assert value == value.lower(), (
+                    f"Значение '{value}' для '{field}' в пресете '{preset_name}' "
+                    f"должно быть в нижнем регистре"
+                )

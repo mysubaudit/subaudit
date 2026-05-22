@@ -25,6 +25,7 @@ from app.core.mapper import (
     REQUIRED_FIELDS,
     auto_map_columns,
 )
+from app.core.presets import get_preset_mapping
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 from app.utils.ui_components import render_cta_button
 
@@ -207,14 +208,66 @@ def render_mapping_page() -> None:
     st.divider()
 
     # ------------------------------------------------------------------
+    # v3.2.4: Проверяем, распознан ли пресет формата CSV
+    # Если да — показываем зелёный баннер и кнопку сброса
+    # ------------------------------------------------------------------
+    preset = st.session_state.get("preset")
+
+    if preset:
+        preset_display = "LemonSqueezy" if preset == "lemonsqueezy" else preset.capitalize()
+        col_banner, col_reset = st.columns([4, 1])
+        with col_banner:
+            st.success(
+                f"✅ {preset_display} format detected — mapping pre-filled",
+                icon="🎯",
+            )
+        with col_reset:
+            if st.button(
+                "↩ This is not my format",
+                key="reset_preset_btn",
+                use_container_width=True,
+                help="Reset detected format and switch to manual mapping",
+            ):
+                st.session_state["preset"] = None
+                # Сбрасываем флаги авто-маппинга, чтобы при следующем
+                # рендере сработал обычный fuzzy matching
+                if "auto_mapping_done" in st.session_state:
+                    del st.session_state["auto_mapping_done"]
+                if "_suggested_mapping" in st.session_state:
+                    del st.session_state["_suggested_mapping"]
+                st.rerun()
+
+    # ------------------------------------------------------------------
     # Автоматическое предложение сопоставления (auto_map_columns)
     # Section 4: auto_map_columns() — rapidfuzz
+    # v3.2.4: если пресет распознан, используем точный mapping из сигнатуры
     # ------------------------------------------------------------------
 
     # Инициализируем авто-маппинг только если он ещё не был выполнен
     # (не перезаписываем ручной выбор пользователя при ре-рендере)
     if "auto_mapping_done" not in st.session_state:
-        suggested = auto_map_columns(df_raw)
+        if preset:
+            # --- v3.2.4: mapping из пресета (точное совпадение колонок) ---
+            preset_mapping = get_preset_mapping(preset)
+            # Строим case-insensitive lookup: lowercase → реальное имя колонки
+            csv_cols_lower: dict[str, str] = {
+                col.strip().lower(): col for col in df_raw.columns
+            }
+            # Заполняем suggested из пресета (4 поля: customer_id, date, amount, status)
+            suggested = {}
+            for field in ALL_FIELDS:
+                if field in preset_mapping:
+                    target_lower = preset_mapping[field].lower()
+                    suggested[field] = csv_cols_lower.get(target_lower, None)
+                else:
+                    suggested[field] = None
+            # Для поля currency (не из пресета) — используем auto_map_columns
+            auto_suggested = auto_map_columns(df_raw)
+            if auto_suggested.get("currency"):
+                suggested["currency"] = auto_suggested["currency"]
+        else:
+            # Обычный fuzzy matching (без пресета)
+            suggested = auto_map_columns(df_raw)
         st.session_state["_suggested_mapping"] = suggested
         st.session_state["auto_mapping_done"] = True
     else:

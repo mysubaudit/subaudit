@@ -162,3 +162,47 @@ def detect_preset(df, columns: list[str]) -> str | None:
             return preset_name
 
     return None
+
+
+# ── Получение mapping-правил для пресета (v3.2.4) ─────────────────────────
+
+def get_preset_mapping(preset_name: str) -> dict[str, str]:
+    """
+    Возвращает mapping {canonical_field: csv_column_name} для заданного пресета.
+
+    Подшаг v3.2.4 (SPEC.md §8).
+
+    Используется на странице mapping для предзаполнения selectbox'ов,
+    когда формат CSV распознан через detect_preset().
+
+    Параметры
+    ----------
+    preset_name : str
+        Имя пресета ("stripe", "paddle", "gumroad", "lemonsqueezy",
+        "chargebee", "manual").
+
+    Возвращает
+    ----------
+    dict[str, str]
+        Словарь с ключами customer_id, date, amount, status и значениями —
+        именами колонок CSV, ожидаемыми для данного источника.
+        Поле currency всегда отсутствует в пресетах (добавляется отдельно
+        через auto_map_columns на mapping-странице).
+
+    Примеры
+    --------
+    >>> get_preset_mapping("stripe")
+    {'customer_id': 'customer_id', 'date': 'created', 'amount': 'amount', 'status': 'status'}
+
+    >>> get_preset_mapping("gumroad")
+    {'customer_id': 'email', 'date': 'created_at', 'amount': 'price', 'status': 'cancelled'}
+
+    >>> get_preset_mapping("unknown")
+    Traceback (most recent call last):
+        ...
+    ValueError: Unknown preset: 'unknown'
+    """
+    if preset_name not in _PRESET_SIGNATURES:
+        raise ValueError(f"Unknown preset: '{preset_name}'")
+    # Возвращаем копию, чтобы вызывающий код не мог мутировать оригинал
+    return dict(_PRESET_SIGNATURES[preset_name])
