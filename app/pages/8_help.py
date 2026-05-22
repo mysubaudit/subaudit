@@ -255,6 +255,19 @@ elif st.session_state.help_section == "metrics":
         **Note:**
         - Requires at least 2 months of data
         - If previous month data is missing, churn rate will show "N/A"
+
+        **Voluntary vs. Involuntary Churn:**
+        SubAudit also splits churn into two types to help you diagnose the root cause:
+
+        - **Voluntary Churn**: Customers who actively cancel (status = `churned`). These customers made a conscious decision to leave — usually due to product gaps, pricing, or competitive alternatives.
+        - **Involuntary Churn**: Customers lost due to payment failures (status = `past_due`). These customers didn't choose to leave — their payment method expired or was declined.
+
+        **Why this split matters:**
+        - High **voluntary** churn → focus on product improvements, pricing, or customer success
+        - High **involuntary** churn → focus on payment recovery (dunning emails, card updater services)
+        - Fixing involuntary churn is typically faster and cheaper than reducing voluntary churn
+
+        You'll see both voluntary and involuntary churn rates on the Dashboard and in exported reports.
         """)
 
     with tab5:

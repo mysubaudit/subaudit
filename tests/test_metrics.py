@@ -45,6 +45,9 @@ from app.core.metrics import (
     calculate_new_subscribers,
     calculate_reactivated_subscribers,
     calculate_churn_rate,
+    calculate_voluntary_churn_rate,
+    calculate_involuntary_churn_rate,
+    _get_churned_customer_ids_by_type,
     calculate_revenue_churn,
     calculate_nrr,
     calculate_ltv,
@@ -932,6 +935,108 @@ class TestReactivatedSubscribers:
 # ===========================================================================
 # БЛОК 3 — RETENTION (Section 6, Section 8)
 # ===========================================================================
+
+# ---------------------------------------------------------------------------
+# v3.1 — Voluntary vs Involuntary Churn (SPEC.md §8)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def sample_voluntary_involuntary() -> pd.DataFrame:
+    """
+    12 customers, prev_month=2024-11, last_month=2024-12.
+    5 active in both months.
+    3 cancelled (voluntary) in last_month.
+    2 past_due (involuntary) in last_month.
+    1 (c11) active in prev, both churned+past_due in last → voluntary priority.
+    1 (c12) new customer.
+    Active prev = 11 (c1..c11). Lost = 5 (voluntary 4 + involuntary 2, c11 counted once).
+    """
+    rows = [
+        # Prev month: 11 customers active (c1..c11)
+        *[{"customer_id": f"c{i}", "date": "2024-11-01", "amount": 50.0, "status": "active", "currency": "USD"} for i in range(1, 12)],
+        # Last month:
+        # Retained: c1..c5 active
+        *[{"customer_id": f"c{i}", "date": "2024-12-01", "amount": 50.0, "status": "active", "currency": "USD"} for i in range(1, 6)],
+        # Voluntary churn: c6..c8 cancelled
+        {"customer_id": "c6", "date": "2024-12-01", "amount": 0.0, "status": "churned", "currency": "USD"},
+        {"customer_id": "c7", "date": "2024-12-01", "amount": 0.0, "status": "churned", "currency": "USD"},
+        {"customer_id": "c8", "date": "2024-12-01", "amount": 0.0, "status": "churned", "currency": "USD"},
+        # Involuntary churn: c9..c10 past_due
+        {"customer_id": "c9", "date": "2024-12-01", "amount": 0.0, "status": "past_due", "currency": "USD"},
+        {"customer_id": "c10", "date": "2024-12-01", "amount": 0.0, "status": "past_due", "currency": "USD"},
+        # Both voluntary+involuntary → voluntary priority: c11
+        {"customer_id": "c11", "date": "2024-12-01", "amount": 0.0, "status": "churned", "currency": "USD"},
+        {"customer_id": "c11", "date": "2024-12-01", "amount": 0.0, "status": "past_due", "currency": "USD"},
+        # New customer: c12
+        {"customer_id": "c12", "date": "2024-12-01", "amount": 50.0, "status": "active", "currency": "USD"},
+    ]
+    return _make_df(rows)
+
+
+class TestVoluntaryInvoluntaryChurn:
+    """
+    v3.1: Тесты calculate_voluntary_churn_rate(), calculate_involuntary_churn_rate(),
+    _get_churned_customer_ids_by_type().
+    """
+
+    def test_get_churned_ids_by_type(self, sample_voluntary_involuntary):
+        result = _get_churned_customer_ids_by_type(sample_voluntary_involuntary)
+        # c6, c7, c8, c11 → voluntary (c11 has both, priority to voluntary)
+        assert "c6" in result["voluntary"]
+        assert "c7" in result["voluntary"]
+        assert "c8" in result["voluntary"]
+        assert "c11" in result["voluntary"]
+        assert len(result["voluntary"]) == 4
+        # c9, c10 → involuntary
+        assert "c9" in result["involuntary"]
+        assert "c10" in result["involuntary"]
+        # c11 NOT in involuntary (priority)
+        assert "c11" not in result["involuntary"]
+        assert len(result["involuntary"]) == 2
+
+    def test_voluntary_churn_rate(self, sample_voluntary_involuntary):
+        rate = calculate_voluntary_churn_rate(sample_voluntary_involuntary)
+        # 4 voluntary churned (c6,c7,c8,c11) out of 11 active prev = 36.36...
+        # c11 has both statuses, priority to voluntary
+        assert rate is not None
+        assert rate == pytest.approx(36.3636, rel=0.01)
+
+    def test_involuntary_churn_rate(self, sample_voluntary_involuntary):
+        rate = calculate_involuntary_churn_rate(sample_voluntary_involuntary)
+        # 2 involuntary out of 11 active prev
+        assert rate is not None
+        assert rate == pytest.approx(18.1818, rel=0.01)
+
+    def test_voluntary_churn_none_no_prev(self, sample_no_prev_month):
+        rate = calculate_voluntary_churn_rate(sample_no_prev_month)
+        assert rate is None
+
+    def test_involuntary_churn_none_no_prev(self, sample_no_prev_month):
+        rate = calculate_involuntary_churn_rate(sample_no_prev_month)
+        assert rate is None
+
+    def test_voluntary_churn_zero(self, sample_basic):
+        # sample_basic has no churned or past_due statuses, only active
+        rate = calculate_voluntary_churn_rate(sample_basic)
+        assert rate is not None
+        assert rate == 0.0
+
+    def test_involuntary_churn_zero(self, sample_basic):
+        rate = calculate_involuntary_churn_rate(sample_basic)
+        assert rate is not None
+        assert rate == 0.0
+
+    def test_churn_rate_equals_sum_of_split(self, sample_voluntary_involuntary):
+        """Общий churn_rate должен быть суммой voluntary + involuntary."""
+        total = calculate_churn_rate(sample_voluntary_involuntary)
+        voluntary = calculate_voluntary_churn_rate(sample_voluntary_involuntary)
+        involuntary = calculate_involuntary_churn_rate(sample_voluntary_involuntary)
+        assert total is not None
+        assert voluntary is not None
+        assert involuntary is not None
+        # 4 voluntary + 2 involuntary = 6 lost / 11 = 54.55%, c11 counted in voluntary only
+        assert total == pytest.approx(voluntary + involuntary, rel=0.01)
+
 
 class TestChurnRate:
     """Тесты для calculate_churn_rate() — Section 6."""

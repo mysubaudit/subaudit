@@ -578,12 +578,13 @@ st.markdown("""
                 Reactivated customers tracked separately — no metric inflation.
             </div>
         </div>
-        <div class="feature-card">
+                <div class="feature-card">
             <span class="feature-icon">🔄</span>
             <div class="feature-name">Block 3 — Retention</div>
             <div class="feature-desc">
-                Churn Rate, Revenue Churn (4 distinct scenarios),
-                and NRR clamped to 0–999% with data-quality warnings.
+                Total churn rate split into Voluntary (cancelled) vs Involuntary
+                (payment failed). Revenue Churn with 4 distinct scenarios.
+                NRR clamped to 0–999% with data-quality warnings.
             </div>
         </div>
         <div class="feature-card">

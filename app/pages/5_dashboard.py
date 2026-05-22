@@ -173,6 +173,7 @@ def _render_block3_retention(metrics: dict, currency: str) -> None:
     Блок 3 — Retention (Section 6, 9).
     Только Starter и PRO (Section 2).
     NRR > 200% → обязательное предупреждение (Section 6).
+    v3.1: Voluntary vs Involuntary Churn split (SPEC.md §8).
     """
     st.subheader("🔄 Retention")
 
@@ -190,19 +191,44 @@ def _render_block3_retention(metrics: dict, currency: str) -> None:
         st.metric(
             "Churn Rate",
             _fmt_pct(metrics.get("churn_rate")),
-            help="Percentage of customers who cancelled in the most recent month. Formula: (Churned Subscribers / Active Subscribers Previous Month) × 100%. N/A when previous month data is unavailable.",
+            help="Percentage of customers who left in the most recent month. Formula: (Churned Subscribers / Active Subscribers Previous Month) × 100%. N/A when previous month data is unavailable.",
         )
     with col2:
+        voluntary_churn = metrics.get("voluntary_churn_rate")
+        involuntary_churn = metrics.get("involuntary_churn_rate")
+
+        if voluntary_churn is not None and involuntary_churn is not None:
+            st.metric(
+                "Voluntary Churn",
+                _fmt_pct(voluntary_churn),
+                help="Customers who cancelled intentionally. 💡 These are customers who chose to leave — improve product or pricing.",
+            )
+            st.metric(
+                "Involuntary Churn",
+                _fmt_pct(involuntary_churn),
+                help="Customers lost due to payment failures (card expired, insufficient funds). 🔧 These are recoverable — use dunning emails or retry logic.",
+            )
+        else:
+            st.metric(
+                "Voluntary Churn",
+                _fmt_pct(voluntary_churn),
+                help="Customers who cancelled intentionally.",
+            )
+            st.metric(
+                "Involuntary Churn",
+                _fmt_pct(involuntary_churn),
+                help="Customers lost due to payment failures.",
+            )
+    with col3:
         st.metric(
             "Revenue Churn",
             _fmt_currency(metrics.get("revenue_churn"), currency),
             help="Lost revenue from churned customers in the most recent month. Calculated using four-scenario logic (Section 8).",
         )
-    with col3:
         st.metric(
             "NRR",
             _fmt_pct(nrr),
-            help="Net Revenue Retention: percentage of revenue retained from existing customers, including expansions and contractions. NRR > 100% means you're growing revenue from existing customers. Clamped to 0–999%.",
+            help="Net Revenue Retention: percentage of revenue retained from existing customers. Clamped to 0–999%.",
         )
 
 

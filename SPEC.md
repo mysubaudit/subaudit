@@ -7,8 +7,9 @@
 **Current status:**
 - ✅ v3.0 документация завершена (SPEC.md, STRATEGY.md, CLAUDE.md переписаны)
 - ✅ LemonSqueezy → Gumroad миграция завершена
-- ✅ **300/300 тестов проходят**
-- ⏳ v3.1 Voluntary vs Involuntary Churn split — следующий шаг
+- ✅ **308/308 тестов проходят**
+- ✅ v3.1 Voluntary vs Involuntary Churn split — реализовано
+- ⏳ v3.2 Multi-source CSV presets — следующий шаг
 
 ---
 

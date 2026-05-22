@@ -276,6 +276,18 @@ def _build_sheet_summary(
             "✓" if metrics.get("churn_rate") is not None else "N/A",
         ),
         (
+            "Voluntary Churn",
+            _fmt_pct(metrics.get("voluntary_churn_rate")),
+            "Customers who cancelled intentionally (status='churned'). N/A if prev==0 or gap.",
+            "✓" if metrics.get("voluntary_churn_rate") is not None else "N/A",
+        ),
+        (
+            "Involuntary Churn",
+            _fmt_pct(metrics.get("involuntary_churn_rate")),
+            "Customers lost due to payment failures (status='past_due'). Recoverable via dunning.",
+            "🔧" if metrics.get("involuntary_churn_rate", 0) and metrics.get("involuntary_churn_rate", 0) > 0 else "✓",
+        ),
+        (
             "Revenue Churn",
             _fmt_currency(metrics.get("revenue_churn"), currency),
             "Scenarios A/B/C/D — see spec Section 8. Refund not double-counted.",

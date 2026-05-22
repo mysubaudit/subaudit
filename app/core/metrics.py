@@ -420,6 +420,76 @@ def calculate_churn_rate(df: pd.DataFrame) -> float | None:
     return float((len(lost) / len(active_prev)) * 100)
 
 
+def _get_churned_customer_ids_by_type(df: pd.DataFrame) -> dict:
+    """
+    Разделяет отток на добровольный и вынужденный по статусу клиента в last_month.
+
+    Определения (SPEC.md §8 v3.1):
+    - voluntary: статус клиента в last_month = 'churned' (cancelled)
+    - involuntary: статус клиента в last_month = 'past_due' (payment_failed)
+
+    Если клиент имеет оба статуса — приоритет voluntary.
+    Возвращает {"voluntary": set, "involuntary": set}.
+    """
+    ctx = _compute_time_context(df)
+    last_month = ctx["last_month"]
+    if last_month is None:
+        return {"voluntary": set(), "involuntary": set()}
+
+    # .assign() вместо subscript-мутации — требование иммутабельности (Section 17)
+    data = df.assign(_period=df["date"].dt.to_period("M"))
+    last_data = data[data["_period"] == last_month]
+
+    voluntary = set(last_data[last_data["status"] == "churned"]["customer_id"])
+    involuntary = set(last_data[last_data["status"] == "past_due"]["customer_id"])
+    # Убираем пересечение: клиент с обоими статусами → voluntary
+    involuntary -= voluntary
+
+    return {"voluntary": voluntary, "involuntary": involuntary}
+
+
+def calculate_voluntary_churn_rate(df: pd.DataFrame) -> float | None:
+    """
+    Voluntary Churn Rate: % клиентов, отменивших подписку намеренно.
+    Формула: voluntary_lost_customers / active_prev_month × 100.
+    Если prev_month_status != 'ok' → None.
+    """
+    ctx = _compute_time_context(df)
+    if ctx["prev_month_status"] != "ok":
+        return None
+
+    active_prev = _get_active_customer_ids_for_period(df, ctx["prev_month"])
+    if not active_prev:
+        return None
+
+    churned_by_type = _get_churned_customer_ids_by_type(df)
+    # Только те, кто был активен в prev_month и стал churned в last_month
+    voluntary = churned_by_type["voluntary"] & active_prev
+
+    return float((len(voluntary) / len(active_prev)) * 100)
+
+
+def calculate_involuntary_churn_rate(df: pd.DataFrame) -> float | None:
+    """
+    Involuntary Churn Rate: % клиентов, потерянных из-за сбоя оплаты.
+    Формула: involuntary_lost_customers / active_prev_month × 100.
+    Если prev_month_status != 'ok' → None.
+    """
+    ctx = _compute_time_context(df)
+    if ctx["prev_month_status"] != "ok":
+        return None
+
+    active_prev = _get_active_customer_ids_for_period(df, ctx["prev_month"])
+    if not active_prev:
+        return None
+
+    churned_by_type = _get_churned_customer_ids_by_type(df)
+    # Только те, кто был активен в prev_month и стал past_due в last_month
+    involuntary = churned_by_type["involuntary"] & active_prev
+
+    return float((len(involuntary) / len(active_prev)) * 100)
+
+
 def calculate_revenue_churn(df: pd.DataFrame) -> float:
     """
     Revenue Churn — четыре сценария A/B/C/D (Section 8).
@@ -777,6 +847,8 @@ def get_all_metrics(df_clean: pd.DataFrame) -> dict:
 
     # --- Блок 3: Retention ---
     churn_rate = calculate_churn_rate(df_clean)
+    voluntary_churn_rate = calculate_voluntary_churn_rate(df_clean)
+    involuntary_churn_rate = calculate_involuntary_churn_rate(df_clean)
     revenue_churn = calculate_revenue_churn(df_clean)
     nrr = calculate_nrr(df_clean)
 
@@ -840,6 +912,8 @@ def get_all_metrics(df_clean: pd.DataFrame) -> dict:
         "reactivated_subscribers": reactivated_subscribers,
         # Блок 3 — Retention
         "churn_rate": churn_rate,
+        "voluntary_churn_rate": voluntary_churn_rate,
+        "involuntary_churn_rate": involuntary_churn_rate,
         "revenue_churn": revenue_churn,
         "nrr": nrr,
         # Блок 4 — Health

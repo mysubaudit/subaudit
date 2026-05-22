@@ -9,7 +9,8 @@
       "Bash(git commit *)",
       "Bash(./run.bat)",
       "WebSearch",
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(git revert *)"
     ]
   }
 }

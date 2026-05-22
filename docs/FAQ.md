@@ -194,6 +194,17 @@ Churn Rate = (Lost Subscribers / Active Subscribers at start of month) × 100%
 
 A customer is considered "churned" if they had an active subscription last month but do not appear in the current month's data.
 
+### What is the difference between Voluntary and Involuntary Churn?
+
+SubAudit v3.1 splits churn into two categories based on your data's **Status** column:
+
+- **Voluntary Churn** (status `cancelled`): Customers who intentionally cancelled their subscription. These are customers who chose to leave — the fix is improving your product or pricing.
+- **Involuntary Churn** (status `past_due` / `payment_failed`): Customers lost due to failed payments (card expired, insufficient funds). These are recoverable — use dunning emails or payment retry logic.
+
+> **Example:** If your dashboard shows 5% Voluntary Churn and 3% Involuntary Churn, it means 3% of your customers didn't want to leave — their payment just didn't go through. This is actionable insight Stripe doesn't show you.
+
+To use this feature, include the appropriate status in your CSV (e.g., `past_due`, `payment_failed`, `cancelled`). SubAudit automatically normalizes common variants of these statuses.
+
 ### Why is my NRR over 100%?
 
 NRR (Net Revenue Retention) over 100% means your existing customers are spending more than they did last month — a sign of healthy expansion revenue (upgrades, add-ons, etc.).

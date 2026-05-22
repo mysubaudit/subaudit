@@ -18,8 +18,8 @@ from typing import Tuple
 # ---------------------------------------------------------------------------
 # Вспомогательные константы — нормализация статусов (Section 3, test_cleaner.py)
 # ---------------------------------------------------------------------------
-# Допустимые значения статуса после нормализации
-_VALID_STATUSES = {"active", "churned", "trial"}
+# Допустимые значения статуса после нормализации (v3.1: добавлен past_due)
+_VALID_STATUSES = {"active", "churned", "past_due", "trial"}
 
 # Карта нормализации: приводим распространённые варианты к стандарту
 _STATUS_NORMALIZATION_MAP: dict[str, str] = {
@@ -27,7 +27,7 @@ _STATUS_NORMALIZATION_MAP: dict[str, str] = {
     "active": "active",
     "Active": "active",
     "ACTIVE": "active",
-    # churned
+    # churned (voluntary — статус отмены клиентом)
     "churned": "churned",
     "Churned": "churned",
     "CHURNED": "churned",
@@ -35,6 +35,17 @@ _STATUS_NORMALIZATION_MAP: dict[str, str] = {
     "cancelled": "churned",
     "Canceled": "churned",
     "Cancelled": "churned",
+    # past_due (involuntary — платёж не прошёл, карта истекла)
+    "past_due": "past_due",
+    "Past Due": "past_due",
+    "PAST_DUE": "past_due",
+    "past due": "past_due",
+    "payment_failed": "past_due",
+    "Payment Failed": "past_due",
+    "PAYMENT_FAILED": "past_due",
+    "failed": "past_due",
+    "Failed": "past_due",
+    "FAILED": "past_due",
     # trial
     "trial": "trial",
     "Trial": "trial",

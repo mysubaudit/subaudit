@@ -1,7 +1,7 @@
 # SubAudit — CLAUDE.md
 ## Инструкции для Claude Code и других AI-ассистентов
 
-**Последнее обновление:** 2026-05-22 (v3.0, тесты зафиксированы)
+**Последнее обновление:** 2026-05-22 (v3.1 завершён, 308 тестов проходят)
 
 ---
 
@@ -48,7 +48,7 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 
 | # | Фича | Срок | Зачем |
 |---|------|------|-------|
-| v3.1 | Voluntary vs Involuntary Churn split | 1 день | Уникальная фича, никто не делает |
+| v3.1 | Voluntary vs Involuntary Churn split | 1 день | ✅ ЗАВЕРШЕНО — уникальная фича, никто не делает |
 | v3.2 | Multi-source CSV presets | 2-3 дня | Главный дифференциатор от ChartMogul |
 | v3.3 | Snapshot history (Supabase) | 2-3 дня | Retention механика |
 
@@ -64,7 +64,7 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 |--------|--------|-----------|
 | Реорганизация документации v3.0 | ✅ | Docx удалён, созданы SPEC.md + STRATEGY.md, CLAUDE.md переписан |
 | Переезд LemonSqueezy → Gumroad | ✅ | Все 25 тестов payments проходят |
-| Полный тест-сьют | ✅ | **300/300 тестов проходят** (cleaner 37, forecast 33, immutability 42, mapper 37, metrics 68, payments 25, session 26, simulation 22) |
+| Полный тест-сьют v3.1 | ✅ | **308/308 тестов проходят** (добавлены 8 тестов voluntary/involuntary churn) |
 | Фикс forecast HoltWinters | ✅ | initialization_method="estimated", формулы сценариев корректны |
 
 ### ⚠️ Предупреждения (не блокирующие)
@@ -76,7 +76,15 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 
 ### 🔜 Следующий шаг
 
-**v3.1 — Voluntary vs Involuntary Churn split** (SPEC.md §8)
+"**v3.1 — Voluntary vs Involuntary Churn split** (SPEC.md §8)
+
+### План анонса v3.1
+
+**Reddit (r/SaaS):** *"Stripe hides a critical metric from you — involuntary churn. I built a free tool that splits churn into 'cancelled' vs 'payment failed'. Turns out 30-40% of 'churn' is just expired cards. You can fix that with dunning emails, but only if you see it."*
+
+**IndieHackers:** *"Shipping v3.1 — voluntary vs involuntary churn split. Your dashboard now separates customers who hated your product from those whose card expired. Actionable insight Stripe won't give you. CSV upload, no integration, $0 on Free plan."*
+
+---"
 
 ---
 
@@ -215,7 +223,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 После этого скажи:
 - какую версию проекта ты видишь
 - какой пункт roadmap следующий (SPEC.md §8)
-- все ли 300 тестов проходят
+- все ли 308 тестов проходят
 - есть ли незакоммиченные изменения
 
 Говори на русском. Не предлагай фичи без ссылки на реальную боль пользователя из STRATEGY.md.

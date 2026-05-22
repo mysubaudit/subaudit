@@ -421,6 +421,7 @@ def _section_retention(
     Block 3 — Retention (Section 9: Block 3).
     Доступен: Starter и Pro (Section 2 — All 5 blocks).
     Формулы: Churn Rate, Revenue Churn, NRR (Section 6 / Section 8).
+    v3.1: Voluntary vs Involuntary Churn split (SPEC.md §8).
     NRR > 200%: показываем предупреждение (Section 6).
     """
     story.append(Paragraph("Block 3 — Retention", styles["section_header"]))
@@ -429,14 +430,40 @@ def _section_retention(
 
     col_w = [page_width * 0.6, page_width * 0.4]
     rows = [
-        _metric_row("Churn Rate",
+        _metric_row("Churn Rate (total)",
                     _fmt_percent(metrics.get("churn_rate")), styles),
+        _metric_row("Voluntary Churn (cancelled)",
+                    _fmt_percent(metrics.get("voluntary_churn_rate")), styles),
+        _metric_row("Involuntary Churn (payment failed)",
+                    _fmt_percent(metrics.get("involuntary_churn_rate")), styles),
         _metric_row("Revenue Churn",
                     _fmt_currency(metrics.get("revenue_churn"), currency), styles),
         _metric_row("NRR (Net Revenue Retention)",
                     _fmt_percent(metrics.get("nrr")), styles),
     ]
     story.append(_build_metrics_table(rows, col_w))
+
+    # Пояснение к voluntary/involuntary split
+    voluntary_val = metrics.get("voluntary_churn_rate")
+    involuntary_val = metrics.get("involuntary_churn_rate")
+    if voluntary_val is not None and involuntary_val is not None:
+        story.append(Spacer(1, 4))
+        if involuntary_val > 0:
+            story.append(
+                Paragraph(
+                    f"💡 {involuntary_val:.1f}% of your subscribers were lost due to payment "
+                    "failures (involuntary churn). These are recoverable — consider using "
+                    "dunning emails or payment retry logic to reduce this figure.",
+                    styles["limitation"],
+                )
+            )
+        story.append(
+            Paragraph(
+                "Voluntary churn = customers who cancelled intentionally. "
+                "Involuntary churn = payment failures (card expired, insufficient funds).",
+                styles["limitation"],
+            )
+        )
 
     # NRR > 200% — обязательное предупреждение (Section 6)
     nrr_val = metrics.get("nrr")
