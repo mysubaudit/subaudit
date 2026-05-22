@@ -254,6 +254,32 @@ SubAudit will sum amounts per customer per month automatically.
 - Amount → `subscription_price`
 - Status → `subscription_status`
 
+### Gumroad
+
+1. Go to **Sales → Subscribers**
+2. Click **Export** (top right)
+3. Choose **CSV** format
+4. Download and upload to SubAudit
+
+**Gumroad column mapping:**
+- Customer ID → `Email` or `Buyer Email`
+- Date → `Subscription Started` or `Created at`
+- Amount → `Price` or `Recurrence Amount`
+- Status → `Subscription Status`
+
+### LemonSqueezy
+
+1. Go to **Subscriptions** in your store dashboard
+2. Click **Export CSV**
+3. Select date range
+4. Download and upload to SubAudit
+
+**LemonSqueezy column mapping:**
+- Customer ID → `customer_id` or `customer_email`
+- Date → `created_at`
+- Amount → `subtotal` or `total`
+- Status → `status`
+
 ### Manual Spreadsheet
 
 If you track subscriptions in Excel or Google Sheets:

@@ -21,3 +21,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Логи и временные файлы
+*.log
+test_results.log
+
+# Архивные документы
+archive/

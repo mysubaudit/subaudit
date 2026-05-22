@@ -137,7 +137,7 @@ Forecast features require:
 
 Currently, SubAudit processes **one file per session**. To analyze a different file, upload it and your previous session data will be replaced.
 
-Multi-file support is on our roadmap for v2.
+Snapshot history (compare metrics across uploads over time) is planned for v3.3 — see [SPEC.md](../SPEC.md).
 
 ### What currencies are supported?
 
@@ -282,7 +282,9 @@ No. SubAudit is proprietary software. However, we're transparent about our data 
 
 ### Can I integrate SubAudit with my billing system?
 
-Not yet. SubAudit currently requires manual CSV upload. API access and webhook integrations are on our roadmap for v2.
+Not yet. SubAudit currently requires manual CSV upload. CSV auto-detection for Stripe / Paddle / Gumroad / LemonSqueezy / Chargebee formats is planned for v3.2 — once the file is uploaded, no mapping step will be needed.
+
+Direct OAuth integrations are not on the near-term roadmap. SubAudit's CSV-first approach is intentional: it supports any billing source, including manual invoicing.
 
 ### Do you have a mobile app?
 
