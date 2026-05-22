@@ -22,6 +22,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# AI-ассистент (шпаргалки, не коммитить)
+.claude/
+
 # Логи и временные файлы
 *.log
 test_results.log

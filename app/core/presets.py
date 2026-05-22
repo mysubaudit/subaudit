@@ -88,3 +88,77 @@ ALL_PRESETS: list[str] = list(_PRESET_SIGNATURES.keys())
 
 # Обязательные поля, которые должны присутствовать в каждой сигнатуре
 PRESET_REQUIRED_FIELDS: list[str] = ["customer_id", "date", "amount", "status"]
+
+# ── Детектор формата CSV (v3.2.2) ────────────────────────────────────────
+
+def detect_preset(df, columns: list[str]) -> str | None:
+    """
+    Определяет источник CSV по совпадению колонок с каталогом сигнатур.
+
+    Подшаг v3.2.2 (SPEC.md §8).
+
+    Алгоритм:
+      1. Приводит все колонки CSV к нижнему регистру.
+      2. Для каждого пресета проверяет, что ВСЕ 4 обязательных поля
+         (customer_id, date, amount, status) присутствуют в CSV-колонках
+         как точное совпадение (case-insensitive) с сигнатурой пресета.
+      3. Возвращает имя первого совпавшего пресета.
+      4. Если ни один пресет не совпал — возвращает None.
+
+    Параметры
+    ----------
+    df : pd.DataFrame
+        Загруженный DataFrame (нужен для будущих подшагов, например,
+        проверки значений в колонках, а не только названий).
+    columns : list[str]
+        Список имён колонок из df (df.columns.tolist()).
+
+    Возвращает
+    ----------
+    str | None
+        Имя пресета (\"stripe\", \"paddle\", \"gumroad\", \"lemonsqueezy\",
+        \"chargebee\", \"manual\") или None, если формат не распознан.
+
+    Правила
+    -------
+    - Поиск ТОЛЬКО по точному совпадению имён колонок (без fuzzy match).
+      Пресеты — это канонические схемы экспорта; если колонки называются
+      иначе, лучше вернуть None, чем угадать неверно.
+    - Все 4 поля (customer_id, date, amount, status) должны совпасть.
+      Частичное совпадение (3 из 4) — это несовпадение.
+    - Порядок обхода: как в _PRESET_SIGNATURES (stripe → manual).
+      При совпадении с несколькими пресетами возвращается первый.
+    - df передан «на будущее»: в v3.2.5 может добавиться проверка
+      значений (например, статусы \"canceled\" vs \"cancelled\").
+      Сейчас df не используется в теле функции.
+
+    Примеры
+    --------
+    >>> df = pd.DataFrame(columns=[\"customer_id\", \"created\", \"amount\", \"status\"])
+    >>> detect_preset(df, df.columns.tolist())
+    \"stripe\"
+
+    >>> df = pd.DataFrame(columns=[\"email\", \"created_at\", \"price\", \"cancelled\"])
+    >>> detect_preset(df, df.columns.tolist())
+    \"gumroad\"
+
+    >>> df = pd.DataFrame(columns=[\"foo\", \"bar\", \"baz\"])
+    >>> detect_preset(df, df.columns.tolist())
+    None
+    """
+    # Приводим все колонки к нижнему регистру для сравнения
+    cols_lower: set[str] = {col.strip().lower() for col in columns}
+
+    for preset_name in ALL_PRESETS:
+        signature = _PRESET_SIGNATURES[preset_name]
+        # Проверяем, что ВСЕ 4 обязательных поля есть среди колонок
+        all_found = True
+        for field in PRESET_REQUIRED_FIELDS:
+            expected_col = signature[field].lower()
+            if expected_col not in cols_lower:
+                all_found = False
+                break
+        if all_found:
+            return preset_name
+
+    return None
