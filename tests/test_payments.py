@@ -270,6 +270,9 @@ class TestSuccessClearsWarning:
         from app.payments.gumroad import get_subscription_status
         result = get_subscription_status(state["user_email"])
 
+        from app.payments.gumroad import get_subscription_status
+        result = get_subscription_status(state["user_email"])
+
         assert result == "pro"
         assert state["user_plan"] == "pro", (
             "Section 14: user_plan в session_state должен быть обновлён "
@@ -788,11 +791,13 @@ class TestPostUpgradeMessageShown:
         requests.get должен вызываться с timeout=5.
         Section 13: «requests.get(..., timeout=5)»
         """
-        mock_response = FakeResponse(200, {"plan": "free"})
+        mock_response = FakeResponse(200, _make_gumroad_response("free"))
         mock_get = mocker.patch("app.payments.gumroad.requests.get",
                                 return_value=mock_response)
         mocker.patch("app.payments.gumroad.st.session_state",
                      clean_session_state)
+        mocker.patch("app.payments.gumroad._get_secrets",
+                     return_value=("test_token", "starter", "pro"))
         _mock_spinner(mocker)
 
         from app.payments.gumroad import get_subscription_status

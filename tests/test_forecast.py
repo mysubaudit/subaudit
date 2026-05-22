@@ -405,8 +405,10 @@ class TestSixPlusMonths:
         assert len(pessimistic) == len(realistic), (
             "Длина pessimistic должна совпадать с realistic (Section 10)"
         )
+        # churn_rate — это ДОЛЯ (0.0–1.0), возвращается как churn_rate_used.
+        # Деление на 100 НЕ требуется — effective_churn уже является долей.
         for i, (r, p) in enumerate(zip(realistic, pessimistic)):
-            expected = max(r * (1 - churn_rate / 100 * 1.20), 0)  # negative guard
+            expected = max(r * (1.0 - churn_rate * 1.20), 0.0)  # negative guard
             assert abs(p - expected) < 0.01, (
                 f"Пессимистичный сценарий неверен на позиции {i}: "
                 f"ожидалось {expected:.4f}, получено {p:.4f} (Section 10)"
