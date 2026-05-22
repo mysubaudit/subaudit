@@ -1,7 +1,7 @@
 # SubAudit — Specification v3.0
 
 **Version:** 3.0
-**Last updated:** 2026-05-18 (тесты зафиксированы, проект готов к v3.1)
+**Last updated:** 2026-05-22 (тесты зафиксированы, проект готов к v3.1)
 **Supersedes:** SubAudit_Spec.docx (v2.x, removed)
 
 **Current status:**
