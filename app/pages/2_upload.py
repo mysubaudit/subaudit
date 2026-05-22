@@ -23,6 +23,8 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 from app.utils.ui_components import render_cta_button
+# v3.2.3: детектор формата CSV (SPEC.md §8)
+from app.core.presets import detect_preset
 
 # ---------------------------------------------------------------------------
 # set_page_config — ОБЯЗАН быть первым вызовом Streamlit (до inject_nav_css).
@@ -294,7 +296,7 @@ def main() -> None:
     keys_to_clear = [
         "df_raw", "df_clean", "column_mapping", "cleaning_report",
         "metrics_dict", "data_quality_flags", "forecast_dict",
-        "simulation_dict", "currency", "company_name"
+        "simulation_dict", "currency", "company_name", "preset"
     ]
     for key in keys_to_clear:
         st.session_state.pop(key, None)
@@ -374,6 +376,12 @@ def main() -> None:
     # Сохраняем в df_raw для передачи в mapper (Step 2) и последующую очистку.
     # -----------------------------------------------------------------------
     st.session_state["df_raw"] = df_processed
+
+    # v3.2.3: авто-определение формата CSV (SPEC.md §8)
+    # Вызываем detect_preset() и сохраняем в session_state.preset.
+    # None если формат не распознан — UI mapping-страницы использует это в v3.2.4.
+    preset = detect_preset(df_processed, list(df_processed.columns))
+    st.session_state["preset"] = preset
 
     # Сбрасываем downstream-ключи при новой загрузке (Section 14)
     for key in (

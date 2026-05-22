@@ -1,3 +1,9 @@
+We are asked to apply the suggested edit to the original code. The suggested edit is a diff-like snippet: it shows a context line and then an addition of WORKDIR.txt after .claude/. So we need to insert a new line with "WORKDIR.txt" after the line ".claude/". The rest of the file remains unchanged.
+
+We need to output the complete modified file, preserving existing comments and unchanged code exactly.
+
+Original code:
+
 # Секреты — Section 19: НИКОГДА не коммитить
 .env
 .streamlit/secrets.toml
@@ -24,6 +30,52 @@ Thumbs.db
 
 # AI-ассистент (шпаргалки, не коммитить)
 .claude/
+
+# Логи и временные файлы
+*.log
+test_results.log
+
+# Архивные документы
+archive/
+
+After applying edit:
+
+We add "WORKDIR.txt" on a new line after .claude/. So the AI section becomes:
+
+# AI-ассистент (шпаргалки, не коммитить)
+.claude/
+WORKDIR.txt
+
+Everything else stays same.
+
+We'll output just the code without explanation.```
+# Секреты — Section 19: НИКОГДА не коммитить
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# AI-ассистент (шпаргалки, не коммитить)
+.claude/
+WORKDIR.txt
 
 # Логи и временные файлы
 *.log
