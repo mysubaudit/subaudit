@@ -184,7 +184,7 @@ whose card expired look the same."* 40-60% of "churn" is recoverable.
 
 **Effort:** 1 day. UI + one formula. **Unique to SubAudit.**
 
-### v3.2 — Multi-source CSV presets
+### v3.2 — Multi-source CSV presets (6 подшагов)
 **Validated pain:** r/SaaS — *"I can't use Stripe metrics since I have a lot
 of manual invoices"*. ChartMogul/Baremetrics are Stripe-only.
 
@@ -192,16 +192,34 @@ of manual invoices"*. ChartMogul/Baremetrics are Stripe-only.
 Presets: Stripe, Paddle, Gumroad, LemonSqueezy, Chargebee, manual.
 Skip mapping page when format is recognized.
 
-**Effort:** 2-3 days. **Strategic differentiator.**
+**Effort:** 2-3 дня (каждый подшаг ~30-60 мин).
 
-### v3.3 — Snapshot history
+| # | Подшаг | Что делает | DoD |
+|---|--------|-----------|-----|
+| v3.2.1 | Каталог сигнатур | Словарь `_PRESET_SIGNATURES` в `app/core/presets.py`: 6 источников, каждый с customer_id/date/amount/status | Таблица в комментарии, тесты не требуются |
+| v3.2.2 | Детектор формата | `detect_preset(df, columns)` — сравнивает колонки CSV с сигнатурами, возвращает имя пресета или None | 3-4 теста, не ломает mapping |
+| v3.2.3 | Интеграция в upload flow | После парсинга CSV вызвать detect_preset(), сохранить в `session_state.preset` | Upload не сломан, детектор молча работает в фоне |
+| v3.2.4 | UI на mapping-странице | Зелёный badge с именем пресета, кнопка «это не мой формат» для сброса на manual | UI логика замкнута, нет регрессии в mapping |
+| v3.2.5 | Авто-скип mapping | Если пресет распознан — сразу применить mapping без ручного подтверждения (флажок в настройках, default ON) | С sample CSV от Stripe — mapping пропускается |
+| v3.2.6 | Документация + финальные тесты | Обновить FAQ, help, SPEC.md, CLAUDE.md; полный прогон тестов | Definition of Done по SPEC.md §9 закрыт |
+
+### v3.3 — Snapshot history (6 подшагов)
 **Validated pain:** r/hubspot — *"HubSpot tells current MRR but not what it
 was on April 1st 2024. Huge blocker."* + general MoM tracking need.
 
 **Implementation:** Store metrics aggregates (NOT raw CSV) in Supabase per
 authenticated user. Show MoM delta on dashboard. Account page shows history.
 
-**Effort:** 2-3 days. **Retention mechanic — turns one-time use into habit.**
+**Effort:** 2-3 дня (каждый подшаг ~30-60 мин).
+
+| # | Подшаг | Что делает |
+|---|--------|-----------|
+| v3.3.1 | Supabase таблица `snapshots` | Структура, миграция |
+| v3.3.2 | Сохранение метрик | Сохранять после загрузки CSV |
+| v3.3.3 | Загрузка истории | MoM дельта для дашборда |
+| v3.3.4 | UI: график MRR/churn | График по месяцам |
+| v3.3.5 | Account page | Список снапшотов |
+| v3.3.6 | Тесты + документация | Полный прогон, обновление docs |
 
 ### v4 (later, only if validated by paying users)
 - Stripe / Paddle / Gumroad direct integrations (OAuth)
