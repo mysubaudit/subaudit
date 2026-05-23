@@ -368,7 +368,7 @@ def main() -> None:
     # -----------------------------------------------------------------------
     df_processed, duplicates_removed = _remove_duplicates(df_raw)
 
-    # -----------------------------------------------------------------------
+        # -----------------------------------------------------------------------
     # Сохраняем данные в session_state (Section 14)
     # df_raw должен быть удалён после создания df_clean (Section 14).
     # На этом этапе df_processed — это «сырые» данные после базовой очистки.
@@ -376,6 +376,9 @@ def main() -> None:
     # Сохраняем в df_raw для передачи в mapper (Step 2) и последующую очистку.
     # -----------------------------------------------------------------------
     st.session_state["df_raw"] = df_processed
+
+    # v3.3: сохраняем имя файла для source в snapshots
+    st.session_state["source_file"] = file_name
 
         # v3.2.3: авто-определение формата CSV (SPEC.md §8)
     preset = detect_preset(df_processed, list(df_processed.columns))

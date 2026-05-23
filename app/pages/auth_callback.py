@@ -44,6 +44,8 @@ def _init_session_defaults() -> None:
         # Данные пользователя
         "user_email": None,
         "user_plan": "free",
+        "user_id": None,            # v3.3: Supabase user UUID for snapshots
+        "source_file": None,        # v3.3: uploaded CSV filename for snapshot source
 
         # Данные о подписке (Section 13)
         "subscription_warning": False,
@@ -176,6 +178,9 @@ def main() -> None:
 
     # Записываем email в сессию
     st.session_state["user_email"] = user_email
+
+    # v3.3: сохраняем Supabase user UUID для снапшотов
+    st.session_state["user_id"] = user_dict.get("id", None)
 
     # Обновляем last_activity — вход является явным действием пользователя
     st.session_state["last_activity"] = time.time()
