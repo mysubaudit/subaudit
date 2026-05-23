@@ -10,7 +10,7 @@ test_presets.py
 import pandas as pd
 import pytest
 
-from app.core.presets import detect_preset, ALL_PRESETS, _PRESET_SIGNATURES, get_preset_mapping
+from app.core.presets import detect_preset, ALL_PRESETS, _PRESET_SIGNATURES, get_preset_mapping, build_preset_mapping
 
 
 # ===========================================================================
@@ -338,7 +338,120 @@ class TestGetPresetMapping:
         for preset_name in ALL_PRESETS:
             result = get_preset_mapping(preset_name)
             for field, value in result.items():
-                assert value == value.lower(), (
+                                assert value == value.lower(), (
                     f"Значение '{value}' для '{field}' в пресете '{preset_name}' "
                     f"должно быть в нижнем регистре"
                 )
+
+
+# ===========================================================================
+# ГРУППА 10 — build_preset_mapping() (v3.2.5)
+# ===========================================================================
+
+class TestBuildPresetMapping:
+    """
+    v3.2.5: Тесты для build_preset_mapping() — построение полного mapping
+    из пресета и реальных колонок CSV. Используется для авто-скипа mapping.
+    """
+
+    def test_stripe_exact_columns(self):
+        """Stripe: точное совпадение всех 4 колонок."""
+        result = build_preset_mapping("stripe", ["customer_id", "created", "amount", "status"])
+        assert result == {
+            "customer_id": "customer_id",
+            "date": "created",
+            "amount": "amount",
+            "status": "status",
+            "currency": None,
+        }
+
+    def test_gumroad_exact_columns(self):
+        """Gumroad: email, created_at, price, cancelled."""
+        result = build_preset_mapping("gumroad", ["email", "created_at", "price", "cancelled"])
+        assert result == {
+            "customer_id": "email",
+            "date": "created_at",
+            "amount": "price",
+            "status": "cancelled",
+            "currency": None,
+        }
+
+    def test_missing_column_returns_none(self):
+        """Если колонки нет в CSV — значение None для этого поля."""
+        result = build_preset_mapping("stripe", ["customer_id", "created", "amount"])
+        assert result["status"] is None
+        assert result["customer_id"] == "customer_id"
+        assert result["date"] == "created"
+        assert result["amount"] == "amount"
+
+    def test_currency_exact_match(self):
+        """Поле currency находится по точному совпадению 'currency'."""
+        result = build_preset_mapping(
+            "stripe",
+            ["customer_id", "created", "amount", "status", "currency"],
+        )
+        assert result["currency"] == "currency"
+
+    def test_currency_case_insensitive(self):
+        """Currency ищется case-insensitive."""
+        result = build_preset_mapping(
+            "paddle",
+            ["customer_id", "created_at", "amount", "status", "CURRENCY"],
+        )
+        assert result["currency"] == "CURRENCY"
+
+    def test_currency_not_present_returns_none(self):
+        """Если колонки currency нет — None."""
+        result = build_preset_mapping("chargebee", ["customer_id", "started_at", "amount", "status"])
+        assert result["currency"] is None
+
+    def test_all_presets_work(self):
+        """build_preset_mapping работает для всех 6 пресетов."""
+        for preset_name in ALL_PRESETS:
+            sig = _PRESET_SIGNATURES[preset_name]
+            columns = list(sig.values())
+            result = build_preset_mapping(preset_name, columns)
+            assert isinstance(result, dict)
+            assert set(result.keys()) == {"customer_id", "date", "amount", "status", "currency"}
+            for field in ["customer_id", "date", "amount", "status"]:
+                assert result[field] == sig[field], (
+                    f"Для пресета '{preset_name}' поле '{field}' должно быть '{sig[field]}', "
+                    f"а не '{result[field]}'"
+                )
+
+    def test_unknown_preset_raises_value_error(self):
+        """Неизвестный пресет → ValueError."""
+        with pytest.raises(ValueError, match="Unknown preset"):
+            build_preset_mapping("unknown", ["a", "b"])
+
+    def test_returned_dict_is_independent(self):
+        """Мутация результата не влияет на каталог сигнатур."""
+        original = _PRESET_SIGNATURES["manual"].copy()
+        result = build_preset_mapping("manual", ["customer_id", "date", "amount", "status"])
+        result["customer_id"] = "hacked"
+        assert _PRESET_SIGNATURES["manual"] == original
+
+    def test_columns_with_whitespace(self):
+        """Колонки с пробелами по краям — strip() отрабатывает."""
+        result = build_preset_mapping("stripe", [" customer_id ", "created", "amount", "status"])
+        assert result["customer_id"] == " customer_id "
+
+    def test_extra_columns_do_not_break(self):
+        """Лишние колонки не мешают построению mapping."""
+        result = build_preset_mapping(
+            "lemonsqueezy",
+            ["customer_email", "created_at", "total", "status", "product_name", "fee"],
+        )
+        assert result["customer_id"] == "customer_email"
+        assert result["date"] == "created_at"
+        assert result["amount"] == "total"
+        assert result["status"] == "status"
+        assert result["currency"] is None
+
+    def test_case_insensitive_match_for_preset_fields(self):
+        """Поля пресета ищутся case-insensitive."""
+        result = build_preset_mapping("stripe", ["CUSTOMER_ID", "CREATED", "Amount", "STATUS"])
+        assert result["customer_id"] == "CUSTOMER_ID"
+        assert result["date"] == "CREATED"
+        assert result["amount"] == "Amount"
+        assert result["status"] == "STATUS"

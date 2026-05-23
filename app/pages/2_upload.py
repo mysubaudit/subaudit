@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
 from app.utils.ui_components import render_cta_button
 # v3.2.3: детектор формата CSV (SPEC.md §8)
-from app.core.presets import detect_preset
+from app.core.presets import detect_preset, build_preset_mapping
 
 # ---------------------------------------------------------------------------
 # set_page_config — ОБЯЗАН быть первым вызовом Streamlit (до inject_nav_css).
@@ -377,11 +377,91 @@ def main() -> None:
     # -----------------------------------------------------------------------
     st.session_state["df_raw"] = df_processed
 
-    # v3.2.3: авто-определение формата CSV (SPEC.md §8)
-    # Вызываем detect_preset() и сохраняем в session_state.preset.
-    # None если формат не распознан — UI mapping-страницы использует это в v3.2.4.
+        # v3.2.3: авто-определение формата CSV (SPEC.md §8)
     preset = detect_preset(df_processed, list(df_processed.columns))
     st.session_state["preset"] = preset
+
+    # -------------------------------------------------------------------
+    # v3.2.5: Авто-скип mapping при распознанном формате (SPEC.md §8)
+    # Если пресет определён — показываем чекбокс "Auto-apply mapping"
+    # (default ON). При включенном чекбоксе сразу сохраняем column_mapping
+    # и отправляем пользователя на cleaning, пропуская 3_mapping.py.
+    # -------------------------------------------------------------------
+    if preset:
+        preset_display = "LemonSqueezy" if preset == "lemonsqueezy" else preset.capitalize()
+
+        auto_skip = st.checkbox(
+            f"Auto-apply detected mapping ({preset_display} format)",
+            value=True,
+            help=(
+                "When checked, column mapping will be applied automatically "
+                "based on the detected format. Uncheck if you want to review "
+                "or adjust mapping manually on the next page."
+            ),
+            key="auto_skip_mapping_checkbox",
+        )
+
+        if auto_skip:
+            # ── Строим и сохраняем column_mapping из пресета ──
+            column_mapping = build_preset_mapping(
+                preset, list(df_processed.columns)
+            )
+            st.session_state["column_mapping"] = column_mapping
+
+            # Успех — показываем сводку маппинга и кнопку на cleaning
+            st.success(
+                f"✅ {preset_display} format detected — "
+                "mapping applied automatically."
+            )
+
+            # Сброс downstream-ключей (кроме column_mapping — он уже сохранён)
+            for key in (
+                "df_clean",
+                "cleaning_report",
+                "metrics_dict",
+                "data_quality_flags",
+                "forecast_dict",
+                "simulation_dict",
+                "currency",
+            ):
+                st.session_state.pop(key, None)
+
+            # Сохраняем валюту
+            currency_value = _get_currency_value(df_processed)
+            st.session_state["currency"] = currency_value
+
+            # Показываем auto-applied mapping в expander
+            with st.expander("🔍 Auto-applied mapping", expanded=False):
+                summary = []
+                field_labels = {
+                    "customer_id": "Customer ID",
+                    "date": "Date",
+                    "status": "Status",
+                    "amount": "Amount",
+                    "currency": "Currency",
+                }
+                for field, label in field_labels.items():
+                    csv_col = column_mapping.get(field)
+                    summary.append({
+                        "Field": label,
+                        "CSV Column": csv_col if csv_col else "—",
+                    })
+                st.dataframe(
+                    pd.DataFrame(summary),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            # Навигация: пропускаем mapping → сразу cleaning
+            render_cta_button(
+                title="✅ Ready for Analysis!",
+                subtitle="Mapping applied — proceed directly to data cleaning",
+                button_label="▶ Continue to Data Cleaning",
+                target_page="pages/4_cleaning.py",
+                button_key="auto_skip_to_cleaning_btn",
+            )
+            st.stop()
+    # Конец v3.2.5
 
     # Сбрасываем downstream-ключи при новой загрузке (Section 14)
     for key in (

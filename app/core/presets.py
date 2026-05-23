@@ -164,7 +164,54 @@ def detect_preset(df, columns: list[str]) -> str | None:
     return None
 
 
-# ── Получение mapping-правил для пресета (v3.2.4) ─────────────────────────
+# ── Получение mapping-правил для пресета (v3.2.4/v3.2.5) ─────────────────
+
+def build_preset_mapping(preset_name: str, columns: list[str]) -> dict[str, str | None]:
+    """
+    Строит полный mapping {canonical_field: csv_column_name} из пресета и колонок CSV.
+    v3.2.5 — используется для авто-скипа mapping на upload-странице.
+
+    Параметры
+    ----------
+    preset_name : str
+        Имя пресета ("stripe", "paddle", …).
+    columns : list[str]
+        Список имён колонок CSV (как есть, без нормализации).
+
+    Возвращает
+    ----------
+    dict[str, str | None]
+        Словарь с ключами customer_id, date, amount, status, currency.
+        Значения — реальные имена колонок из CSV (case-sensitive) или None,
+        если колонка не найдена.
+
+    Пример
+    -------
+    >>> build_preset_mapping("stripe", ["customer_id", "created", "amount", "status"])
+    {'customer_id': 'customer_id', 'date': 'created', 'amount': 'amount', 'status': 'status', 'currency': None}
+    """
+    if preset_name not in _PRESET_SIGNATURES:
+        raise ValueError(f"Unknown preset: '{preset_name}'")
+
+    signature = _PRESET_SIGNATURES[preset_name]
+
+    # Строим lookup: lowercased имя колонки → оригинальное имя
+    cols_lower: dict[str, str] = {
+        col.strip().lower(): col for col in columns
+    }
+
+    mapping: dict[str, str | None] = {}
+
+    # 4 обязательных поля из пресета
+    for field in PRESET_REQUIRED_FIELDS:
+        target_lower = signature[field].lower()
+        mapping[field] = cols_lower.get(target_lower, None)
+
+    # Поле currency — не из пресета, ищем через точное совпадение "currency"
+    mapping["currency"] = cols_lower.get("currency", None)
+
+    return mapping
+
 
 def get_preset_mapping(preset_name: str) -> dict[str, str]:
     """

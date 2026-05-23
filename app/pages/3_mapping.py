@@ -178,6 +178,63 @@ def render_mapping_page() -> None:
     st.divider()
 
     # ------------------------------------------------------------------
+    # v3.2.5: Авто-скип mapping — если column_mapping уже сохранён
+    # (пользователь нажал "Continue to Data Cleaning" на upload-странице
+    # с включенным авто-скипом), показываем уведомление и кнопку.
+    # ------------------------------------------------------------------
+    if "column_mapping" in st.session_state:
+        preset = st.session_state.get("preset")
+        preset_display = (
+            "LemonSqueezy" if preset == "lemonsqueezy"
+            else preset.capitalize() if preset
+            else ""
+        )
+        if preset:
+            st.success(
+                f"✅ {preset_display} format detected — "
+                f"mapping already applied automatically."
+            )
+        else:
+            st.info("ℹ️ Column mapping is already saved.")
+
+        # Показываем сводку маппинга
+        col_mapping = st.session_state["column_mapping"]
+        with st.expander("🔍 Current mapping", expanded=False):
+            summary = []
+            field_labels = {
+                "customer_id": "Customer ID",
+                "date": "Date",
+                "status": "Status",
+                "amount": "Amount",
+                "currency": "Currency",
+            }
+            for field, label in field_labels.items():
+                csv_col = col_mapping.get(field)
+                summary.append({
+                    "Field": label,
+                    "CSV Column": csv_col if csv_col else "—",
+                })
+            st.dataframe(
+                pd.DataFrame(summary),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        render_cta_button(
+            title="✅ Mapping Complete!",
+            subtitle="Proceed to data cleaning and validation",
+            button_label="▶ Continue to Data Cleaning",
+            target_page="pages/4_cleaning.py",
+            button_key="auto_skip_continue_to_cleaning_btn",
+        )
+        st.button(
+            "← Back to Upload",
+            on_click=_go_back_to_upload,
+            use_container_width=True,
+        )
+        return
+
+    # ------------------------------------------------------------------
     # Guard: df_raw должен существовать в session_state (Section 14).
     # Если пользователь попал сюда без загруженного файла — отправляем назад.
     # ------------------------------------------------------------------
