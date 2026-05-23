@@ -1,7 +1,7 @@
 # SubAudit — Specification v3.0
 
-**Version:** 3.0
-**Last updated:** 2026-05-22 (тесты зафиксированы, проект готов к v3.1)
+**Version:** 3.2
+**Last updated:** 2026-05-30 (v3.2 завершён — multi-source CSV presets)
 **Supersedes:** SubAudit_Spec.docx (v2.x, removed)
 
 **Current status:**
@@ -14,7 +14,8 @@
 - ✅ v3.2.3 Интеграция в upload flow — реализовано
 - ✅ v3.2.4 UI на mapping-странице — реализовано (зелёный баннер, предзаполнение, кнопка сброса, +8 тестов, 341 тест проходит)
 - ✅ v3.2.5 Авто-скип mapping — реализовано (+12 тестов, 353 теста проходят)
-- ⏳ v3.2.6 Документация + финальные тесты — следующий шаг
+- ✅ **v3.2 Multi-source CSV presets — ПОЛНОСТЬЮ ЗАВЕРШЁН**
+- ✅ v3.2.6 Документация + финальные тесты — завершено (2026-05-30)
 
 ---
 
@@ -206,7 +207,7 @@ Skip mapping page when format is recognized.
 | v3.2.3 | Интеграция в upload flow | После парсинга CSV вызвать detect_preset(), сохранить в `session_state.preset` | Upload не сломан, детектор молча работает в фоне |
 | v3.2.4 | UI на mapping-странице | ✅ Зелёный badge с именем пресета, кнопка «это не мой формат» для сброса на manual | 341 тест, UI логика замкнута, нет регрессии |
 | v3.2.5 | Авто-скип mapping | ✅ Если пресет распознан — сразу применить mapping без ручного подтверждения (флажок в настройках, default ON) | 353 теста, чекбокс работает, mapping auto-applied |
-| v3.2.6 | Документация + финальные тесты | Обновить FAQ, help, SPEC.md, CLAUDE.md; полный прогон тестов | Definition of Done по SPEC.md §9 закрыт |
+| v3.2.6 | Документация + финальные тесты | ✅ Обновить FAQ, help, SPEC.md, CLAUDE.md; полный прогон тестов (353 passed) | Definition of Done по SPEC.md §9 закрыт |
 
 ### v3.3 — Snapshot history (6 подшагов)
 **Validated pain:** r/hubspot — *"HubSpot tells current MRR but not what it

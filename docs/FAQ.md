@@ -1,6 +1,6 @@
 # SubAudit — Frequently Asked Questions
 
-**Last updated:** May 18, 2026
+**Last updated:** May 30, 2026
 
 ---
 
@@ -114,6 +114,30 @@ CSV (Comma-Separated Values). Most billing systems and payment processors can ex
 
 Yes! SubAudit includes a **smart column mapping** step that uses fuzzy matching to automatically detect your columns. You can also manually map columns if needed.
 
+
+### What CSV formats are automatically detected?
+
+SubAudit v3.2 recognizes CSV exports from **6 billing sources** out of the box:
+
+| Source | Typical columns detected |
+|--------|--------------------------|
+| **Stripe** | `customer_id`, `created`, `amount`, `status`, `currency` |
+| **Paddle** | `customer_id`, `sale_date`, `amount`, `status`, `currency` |
+| **Gumroad** | `purchase_email`, `created_at`, `purchase_total`, `status`, `currency` |
+| **LemonSqueezy** | `customer_email`, `order_date`, `total_amount`, `order_status`, `currency` |
+| **Chargebee** | `Customer ID`, `Invoice Date`, `Amount`, `Status`, `Currency` |
+| **Manual** | `name`, `date`, `amount`, `status`, `currency` |
+
+When your CSV matches a known format:
+- The **mapping step is skipped** — columns are mapped instantly
+- A green badge shows which format was detected
+- You can override with "This is not my format" if needed
+
+Auto-skip can be disabled in settings if you prefer to review mapping every time.
+
+### What if my billing source isn't on the list?
+
+No problem. Upload the CSV as usual and use the manual mapping page to match your columns. The auto-detection simply saves time for common formats — it doesn't block unrecognized CSVs.
 ### What if my data has missing values or errors?
 
 SubAudit includes a **data cleaning** step that:
@@ -293,7 +317,7 @@ No. SubAudit is proprietary software. However, we're transparent about our data 
 
 ### Can I integrate SubAudit with my billing system?
 
-Not yet. SubAudit currently requires manual CSV upload. CSV auto-detection for Stripe / Paddle / Gumroad / LemonSqueezy / Chargebee formats is planned for v3.2 — once the file is uploaded, no mapping step will be needed.
+Not yet. SubAudit currently requires manual CSV upload. However, **v3.2 is now live** — CSV auto-detection for Stripe, Paddle, Gumroad, LemonSqueezy, Chargebee, and Manual formats is available. When your CSV matches a known format, the mapping step is skipped automatically — look for the green badge on the upload page.
 
 Direct OAuth integrations are not on the near-term roadmap. SubAudit's CSV-first approach is intentional: it supports any billing source, including manual invoicing.
 

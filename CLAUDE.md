@@ -1,7 +1,7 @@
 # SubAudit — CLAUDE.md
 ## Инструкции для Claude Code и других AI-ассистентов
 
-**Последнее обновление:** 2026-05-30 (добавлен run_tests.bat + WORKDIR.txt в шпаргалку, v3.2.5 в работе)
+**Последнее обновление:** 2026-05-30 (v3.2 завершён)
 
 ---
 
@@ -62,7 +62,7 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 | v3.2.3 | Интеграция в upload flow | ✅ ЗАВЕРШЕНО | Вызов detect_preset() после парсинга CSV, сохранение в session_state |
 | v3.2.4 | UI на mapping-странице | ✅ ЗАВЕРШЕНО | Зелёный баннер + предзаполнение из пресета + кнопка сброса; 341 тест |
 | v3.2.5 | Авто-скип mapping | ✅ ЗАВЕРШЕНО | Пропуск mapping при распознанном формате (чекбокс, default ON), 353 теста |
-| v3.2.6 | Документация + тесты | ⏳ | FAQ, help, SPEC.md, CLAUDE.md, полный прогон тестов |
+| v3.2.6 | Документация + тесты | ✅ ЗАВЕРШЕНО | FAQ, help, SPEC.md, CLAUDE.md обновлены, 353 теста проходят |
 
 **Не браться за фичу, которой нет в roadmap, без обновления SPEC.md.**
 
@@ -88,9 +88,22 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 | `RequestsDependencyWarning` от urllib3 | Низкий | При обновлении зависимостей |
 | `DeprecationWarning` от `gotrue` → `supabase_auth` | Средний | До обновления Supabase SDK |
 
+### ✅ v3.2 полностью завершён
+
+Все 6 подшагов v3.2 выполнены. 353 теста проходят. Multi-source CSV presets работают.
+
 ### 🔜 Следующий шаг
 
-"**v3.2.5 — Авто-скип mapping** (SPEC.md §8 v3.2.5)
+"**v3.2.6 — Документация + финальные тесты** — ЗАВЕРШЕНО ✅
+
+**Следующий этап: v3.3 — Snapshot history** (SPEC.md §8 v3.3)"
+
+
+### План анонса v3.2
+
+**Reddit (r/SaaS):** *"I built a free tool that auto-detects CSV exports from Stripe, Paddle, Gumroad, LemonSqueezy, Chargebee, and manual invoices. Upload any billing export and skip the column mapping entirely. No integrations needed. $0 on Free plan."*
+
+**IndieHackers:** *"Shipping v3.2 — multi-source CSV presets. SubAudit now recognizes 6 billing sources and auto-maps your columns on upload. Green badge shows which format was detected. Manual override available. Because SaaS founders use more than just Stripe."*
 
 ### План анонса v3.1
 

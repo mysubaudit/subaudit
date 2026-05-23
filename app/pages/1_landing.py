@@ -735,7 +735,7 @@ st.markdown("""
 <div class="trust-bar">
     <div class="trust-bar-inner">
         <span class="trust-item"><span class="ti">🔒</span> In-memory processing only</span>
-        <span class="trust-item"><span class="ti">📋</span> CSV — no integrations required</span>
+        <span class="trust-item"><span class="ti">📋</span> CSV — 6 billing source presets (v3.2)</span>
         <span class="trust-item"><span class="ti">⚡</span> Powered by HoltWinters + pandas</span>
         <span class="trust-item"><span class="ti">🐍</span> Python 3.11 · Streamlit Cloud</span>
         <span class="trust-item"><span class="ti">💳</span> Payments via Gumroad</span>
