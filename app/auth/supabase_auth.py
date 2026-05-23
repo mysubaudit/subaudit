@@ -27,10 +27,10 @@ CHANGELOG (история изменений):
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import streamlit as st
-from supabase import create_client, Client
+
 
 from app.observability.logger import log_error, log_warning, log_info
 
@@ -46,10 +46,10 @@ COOLDOWN: int = 60  # секунды — используется в 7_account.p
 # ---------------------------------------------------------------------------
 
 # Глобальный клиент, инициализируется лениво при первом вызове _get_client()
-supabase: Optional[Client] = None
+supabase: Optional[Any] = None
 
 
-def _get_supabase_client() -> Client:
+def _get_supabase_client() -> Any:
     """
     Создаёт или возвращает существующий клиент Supabase.
     Результат сохраняется в модульный атрибут `supabase` — тесты могут его мокировать.
@@ -89,12 +89,15 @@ def _get_supabase_client() -> Client:
             "Expected [supabase] url + anon_key  OR  SUPABASE_URL + SUPABASE_KEY"
         )
 
+    # Lazy import — чтобы тесты могли мокировать модуль без установленного supabase
+    from supabase import create_client
+
     # Сохраняем в модульный атрибут — тесты мокируют именно его
     supabase = create_client(url, key)
     return supabase
 
 
-def _client() -> Client:
+def _client() -> Any:
     """
     Вспомогательная функция для получения клиента внутри функций модуля.
     Если `supabase` уже замокан тестом — вернёт мок напрямую.
