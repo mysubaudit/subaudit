@@ -424,6 +424,62 @@ def _render_mom_delta(currency: str) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ИСТОРИЯ СНАПШОТОВ — ГРАФИКИ (v3.3.4)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _render_snapshot_charts() -> None:
+    """
+    Линейные графики MRR и Churn Rate по месяцам из истории снапшотов.
+    Данные из get_snapshot_history().
+    Без истории — placeholder.
+    """
+    st.subheader("📈 MRR & Churn Trends")
+
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        st.info("Sign in to see your historical MRR and churn trends.")
+        return
+
+    history = get_snapshot_history(user_id)
+    if history is None:
+        st.info(
+            "📭 No historical snapshots yet. Upload your CSV again next month "
+            "to start tracking trends over time."
+        )
+        return
+
+    periods = history.get("periods", [])
+    mrr_values = history.get("mrr", [])
+    churn_values = history.get("churn_rate", [])
+
+    if len(periods) < 1:
+        st.info("No snapshot data available.")
+        return
+
+    currency = st.session_state.get("currency", "USD")
+
+    # MRR line chart
+    st.markdown("**MRR by Month**")
+    if len(periods) >= 2:
+        df_mrr = pd.DataFrame({"period": periods, "MRR": mrr_values}).set_index("period")
+        st.line_chart(df_mrr, use_container_width=True)
+    else:
+        st.metric("MRR", _fmt_currency(mrr_values[0], currency))
+        st.caption("Upload again next month to see MRR trend line.")
+
+    # Churn Rate line chart
+    st.markdown("**Churn Rate by Month**")
+    if len(periods) >= 2 and churn_values:
+        df_churn = pd.DataFrame({"period": periods, "Churn Rate": churn_values}).set_index("period")
+        st.line_chart(df_churn, use_container_width=True)
+    elif churn_values:
+        st.metric("Churn Rate", _fmt_pct(churn_values[0]))
+        st.caption("Upload again next month to see churn trend line.")
+    else:
+        st.info("No churn rate data in snapshots.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ПРОГНОЗ
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -937,6 +993,10 @@ def main() -> None:
 
     # ── MoM-дельта (v3.3.3: сравнение с предыдущим снапшотом) ─────────────
     _render_mom_delta(currency)
+    st.divider()
+
+    # ── Графики истории (v3.3.4: MRR/Churn trends) ───────────────────────────
+    _render_snapshot_charts()
     st.divider()
 
     # ── Прогноз ───────────────────────────────────────────────────────────────
