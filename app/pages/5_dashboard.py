@@ -26,6 +26,7 @@ from app.reports.pdf_builder import generate_pdf
 from app.reports.excel_builder import generate_excel
 from app.payments.gumroad import get_subscription_status
 from app.observability.logger import log_error, log_warning, log_info
+from app.core.snapshot import save_snapshot, get_snapshot_history, calculate_mom_deltas  # v3.3
 
 # Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
 import sys, os
@@ -314,6 +315,112 @@ def _render_block5_cohort(metrics: dict) -> None:
         "Customers with amount=0 are counted as retained (paused/discounted subscriptions). "
         "This is intentional — see Section 7 of specification."
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MoM-ДЕЛЬТА (v3.3.3)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _render_mom_delta(currency: str) -> None:
+    """
+    Блок Month-over-Month Change.
+    Сравнение с предыдущим снапшотом: ΔMRR, ΔChurn, ΔNRR.
+    Зелёный (рост MRR/NRR, падение Churn) / красный (падение MRR/NRR, рост Churn).
+    Если истории нет → «Upload again next month to see trends».
+    """
+    st.subheader("📅 Month-over-Month Change")
+
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        st.info("Sign in to see your growth trends across months.")
+        return
+
+    history = get_snapshot_history(user_id)
+    if history is None:
+        st.info(
+            "📭 No historical snapshots yet. Upload your CSV again next month "
+            "to start tracking growth. Your current metrics will be saved as your first snapshot."
+        )
+        return
+
+    deltas = calculate_mom_deltas(history)
+    if deltas is None:
+        st.info(
+            "📭 Only one snapshot found — upload again next month to see trends. "
+            "Your Month-over-Month changes will appear after your second upload."
+        )
+        return
+
+    cur_period = deltas["period"]["current"]
+    prev_period = deltas["period"]["previous"]
+    st.caption(f"Comparing {cur_period} vs {prev_period}")
+
+    col1, col2, col3 = st.columns(3)
+
+    # MRR delta
+    mrr = deltas["mrr"]
+    with col1:
+        delta_pct = mrr.get("delta_pct")
+        if delta_pct is not None:
+            delta_str = f"{delta_pct:+.1f}%"
+            delta_color = "normal"  # green for positive, red for negative
+            st.metric(
+                "Δ MRR",
+                _fmt_currency(mrr["current"], currency),
+                delta=delta_str,
+                delta_color=delta_color,
+                help=f"Previous month MRR: {_fmt_currency(mrr['previous'], currency)}. Growth: {delta_pct:+.1f}%.",
+            )
+        else:
+            st.metric(
+                "Δ MRR",
+                _fmt_currency(mrr["current"], currency),
+                delta="N/A",
+                help=f"Previous month MRR: {_fmt_currency(mrr['previous'], currency)}.",
+            )
+
+    # Churn Rate delta
+    churn = deltas["churn_rate"]
+    with col2:
+        delta_pp = churn.get("delta_pp")
+        if delta_pp is not None:
+            delta_str = f"{delta_pp:+.1f} pp"
+            # Churn going down is good → green for negative
+            st.metric(
+                "Δ Churn Rate",
+                _fmt_pct(churn["current"]),
+                delta=delta_str,
+                delta_color="inverse",  # decrease = good = green
+                help=f"Previous month: {_fmt_pct(churn['previous'])}. Change: {delta_pp:+.1f} percentage points.",
+            )
+        else:
+            st.metric(
+                "Δ Churn Rate",
+                _fmt_pct(churn["current"]),
+                delta="N/A",
+                help=f"Previous month: {_fmt_pct(churn['previous'])}.",
+            )
+
+    # NRR delta
+    nrr = deltas["nrr"]
+    with col3:
+        delta_pp = nrr.get("delta_pp")
+        if delta_pp is not None:
+            delta_str = f"{delta_pp:+.1f} pp"
+            st.metric(
+                "Δ NRR",
+                _fmt_pct(nrr["current"]),
+                delta=delta_str,
+                delta_color="normal",  # increase = good = green
+                help=f"Previous month: {_fmt_pct(nrr['previous'])}. Change: {delta_pp:+.1f} percentage points.",
+            )
+        else:
+            st.metric(
+                "Δ NRR",
+                _fmt_pct(nrr["current"]),
+                delta="N/A",
+                help=f"Previous month: {_fmt_pct(nrr['previous'])}.",
+            )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -827,6 +934,10 @@ def main() -> None:
         )
         st.page_link("pages/6_pricing.py", label="View Pricing", icon="💎")
         st.divider()
+
+    # ── MoM-дельта (v3.3.3: сравнение с предыдущим снапшотом) ─────────────
+    _render_mom_delta(currency)
+    st.divider()
 
     # ── Прогноз ───────────────────────────────────────────────────────────────
     # Section 10: Starter и PRO только; FREE — заглушка

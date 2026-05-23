@@ -197,3 +197,127 @@ def get_snapshot_history(user_id: str) -> dict | None:
             },
         )
         return None
+# --------------------------------------------------------------------------
+# calculate_mom_deltas()
+# --------------------------------------------------------------------------
+
+def calculate_mom_deltas(history: dict) -> dict | None:
+    """
+    Calculate Month-over-Month deltas from snapshot history.
+
+    Parameters
+    ----------
+    history : dict
+        Snapshot history from get_snapshot_history().
+
+    Returns
+    -------
+    dict | None
+        {
+            "mrr": {"current": 1100, "previous": 1000, "delta_pct": 10.0},
+            "churn_rate": {"current": 3.0, "previous": 3.5, "delta_pp": -0.5},
+            "nrr": {"current": 98.0, "previous": 95.0, "delta_pp": 3.0},
+            "period": {"current": "2024-02", "previous": "2024-01"},
+        }
+        Returns None if history has fewer than 2 snapshots.
+    """
+    if not history or len(history.get("periods", [])) < 2:
+        return None
+
+    periods = history["periods"]
+    last = len(periods) - 1
+    prev = last - 1
+
+    result: dict = {"period": {"current": periods[last], "previous": periods[prev]}}
+
+    # MRR — relative percentage change
+    old_mrr = history.get("mrr", [None] * len(periods))[prev]
+    new_mrr = history.get("mrr", [None] * len(periods))[last]
+    result["mrr"] = {
+        "current": new_mrr,
+        "previous": old_mrr,
+        "delta_pct": ((new_mrr - old_mrr) / abs(old_mrr)) * 100
+        if old_mrr is not None and old_mrr != 0
+        else None,
+    }
+
+    # Churn Rate — absolute percentage-point change
+    old_churn = history.get("churn_rate", [None] * len(periods))[prev]
+    new_churn = history.get("churn_rate", [None] * len(periods))[last]
+    result["churn_rate"] = {
+        "current": new_churn,
+        "previous": old_churn,
+        "delta_pp": (new_churn - old_churn)
+        if old_churn is not None and new_churn is not None
+        else None,
+    }
+
+    # NRR — absolute percentage-point change
+    old_nrr = history.get("nrr", [None] * len(periods))[prev]
+    new_nrr = history.get("nrr", [None] * len(periods))[last]
+    result["nrr"] = {
+        "current": new_nrr,
+        "previous": old_nrr,
+        "delta_pp": (new_nrr - old_nrr)
+        if old_nrr is not None and new_nrr is not None
+        else None,
+    }
+
+    return result
+
+# --------------------------------------------------------------------------
+# calculate_mom_deltas()
+# --------------------------------------------------------------------------
+
+def calculate_mom_deltas(history: dict) -> dict | None:
+    """
+    Calculate Month-over-Month deltas from snapshot history.
+
+    Returns None if history has fewer than 2 snapshots.
+    """
+    if not history or len(history.get("periods", [])) < 2:
+        return None
+
+    periods = history["periods"]
+    last_idx = len(periods) - 1
+    prev_idx = last_idx - 1
+
+    result: dict = {"period": {"current": periods[last_idx], "previous": periods[prev_idx]}}
+
+    # MRR
+    mrr_list = history.get("mrr", [])
+    old_mrr = mrr_list[prev_idx] if len(mrr_list) > prev_idx else None
+    new_mrr = mrr_list[last_idx] if len(mrr_list) > last_idx else None
+    result["mrr"] = {
+        "current": new_mrr,
+        "previous": old_mrr,
+        "delta_pct": ((new_mrr - old_mrr) / abs(old_mrr)) * 100
+        if old_mrr is not None and old_mrr != 0
+        else None,
+    }
+
+    # Churn Rate
+    churn_list = history.get("churn_rate", [])
+    old_churn = churn_list[prev_idx] if len(churn_list) > prev_idx else None
+    new_churn = churn_list[last_idx] if len(churn_list) > last_idx else None
+    result["churn_rate"] = {
+        "current": new_churn,
+        "previous": old_churn,
+        "delta_pp": (new_churn - old_churn)
+        if old_churn is not None and new_churn is not None
+        else None,
+    }
+
+    # NRR
+    nrr_list = history.get("nrr", [])
+    old_nrr = nrr_list[prev_idx] if len(nrr_list) > prev_idx else None
+    new_nrr = nrr_list[last_idx] if len(nrr_list) > last_idx else None
+    result["nrr"] = {
+        "current": new_nrr,
+        "previous": old_nrr,
+        "delta_pp": (new_nrr - old_nrr)
+        if old_nrr is not None and new_nrr is not None
+        else None,
+    }
+
+    return result
