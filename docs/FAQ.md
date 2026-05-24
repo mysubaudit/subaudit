@@ -1,6 +1,6 @@
 # SubAudit — Frequently Asked Questions
 
-**Last updated:** May 30, 2026
+**Last updated:** May 18, 2026
 
 ---
 
@@ -114,30 +114,6 @@ CSV (Comma-Separated Values). Most billing systems and payment processors can ex
 
 Yes! SubAudit includes a **smart column mapping** step that uses fuzzy matching to automatically detect your columns. You can also manually map columns if needed.
 
-
-### What CSV formats are automatically detected?
-
-SubAudit v3.2 recognizes CSV exports from **6 billing sources** out of the box:
-
-| Source | Typical columns detected |
-|--------|--------------------------|
-| **Stripe** | `customer_id`, `created`, `amount`, `status`, `currency` |
-| **Paddle** | `customer_id`, `sale_date`, `amount`, `status`, `currency` |
-| **Gumroad** | `purchase_email`, `created_at`, `purchase_total`, `status`, `currency` |
-| **LemonSqueezy** | `customer_email`, `order_date`, `total_amount`, `order_status`, `currency` |
-| **Chargebee** | `Customer ID`, `Invoice Date`, `Amount`, `Status`, `Currency` |
-| **Manual** | `name`, `date`, `amount`, `status`, `currency` |
-
-When your CSV matches a known format:
-- The **mapping step is skipped** — columns are mapped instantly
-- A green badge shows which format was detected
-- You can override with "This is not my format" if needed
-
-Auto-skip can be disabled in settings if you prefer to review mapping every time.
-
-### What if my billing source isn't on the list?
-
-No problem. Upload the CSV as usual and use the manual mapping page to match your columns. The auto-detection simply saves time for common formats — it doesn't block unrecognized CSVs.
 ### What if my data has missing values or errors?
 
 SubAudit includes a **data cleaning** step that:
@@ -159,9 +135,15 @@ Forecast features require:
 
 ### Can I upload multiple files?
 
-Currently, SubAudit processes **one file per session**. To analyze a different file, upload it and your previous session data will be replaced.
+Yes! Starting with v3.3, SubAudit saves a **snapshot of your metrics** after each CSV upload. When you come back next month and upload a new file, you'll see:
 
-Snapshot history (compare metrics across uploads over time) is planned for v3.3 — see [SPEC.md](../SPEC.md).
+- **Month-over-Month delta** — how MRR, Churn, and NRR changed
+- **Trend graph** — MRR and Churn Rate over time
+- **Full history** on your Account page with CSV export
+
+To compare across months, simply upload your latest CSV. Your past metrics are stored securely in Supabase and only visible to you. Free plan included.
+
+For technical details, see [SPEC.md §8](../SPEC.md#8-roadmap-priority-by-validated-pain).
 
 ### What currencies are supported?
 
@@ -317,13 +299,24 @@ No. SubAudit is proprietary software. However, we're transparent about our data 
 
 ### Can I integrate SubAudit with my billing system?
 
-Not yet. SubAudit currently requires manual CSV upload. However, **v3.2 is now live** — CSV auto-detection for Stripe, Paddle, Gumroad, LemonSqueezy, Chargebee, and Manual formats is available. When your CSV matches a known format, the mapping step is skipped automatically — look for the green badge on the upload page.
+Not yet. SubAudit currently requires manual CSV upload. CSV auto-detection for Stripe / Paddle / Gumroad / LemonSqueezy / Chargebee formats is planned for v3.2 — once the file is uploaded, no mapping step will be needed.
 
 Direct OAuth integrations are not on the near-term roadmap. SubAudit's CSV-first approach is intentional: it supports any billing source, including manual invoicing.
 
 ### Do you have a mobile app?
 
 No. SubAudit is a web application optimized for desktop browsers. It works on mobile browsers but the experience is best on a laptop or desktop.
+
+### Will my past metrics be saved?
+
+Yes. Starting with v3.3, every time you upload a CSV and view your dashboard, SubAudit automatically saves a snapshot of your key metrics (MRR, ARR, ARPU, Churn Rate, NRR, LTV, active subscribers, total revenue) to your account. This is stored securely in Supabase and only you can see it.
+
+Next time you upload a CSV (e.g., next month), your dashboard will show:
+- A **Month-over-Month delta** comparing current vs previous metrics
+- **Trend graphs** of MRR and Churn Rate over time
+- A full **snapshot history** table on your Account page, with one-click CSV export
+
+This works even on the Free plan — no credit card required. We built this because HubSpot tells you current MRR but not what it was 6 months ago. Founders need to see if they're growing.
 
 ---
 

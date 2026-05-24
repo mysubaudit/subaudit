@@ -209,23 +209,23 @@ Skip mapping page when format is recognized.
 | v3.2.5 | Авто-скип mapping | ✅ Если пресет распознан — сразу применить mapping без ручного подтверждения (флажок в настройках, default ON) | 353 теста, чекбокс работает, mapping auto-applied |
 | v3.2.6 | Документация + финальные тесты | ✅ Обновить FAQ, help, SPEC.md, CLAUDE.md; полный прогон тестов (353 passed) | Definition of Done по SPEC.md §9 закрыт |
 
-### v3.3 — Snapshot history (6 подшагов)
+### v3.3 — Snapshot history (6 подшагов) ✅ ЗАВЕРШЕНО (2026-05-30)
 **Validated pain:** r/hubspot — *"HubSpot tells current MRR but not what it
 was on April 1st 2024. Huge blocker."* + general MoM tracking need.
 
 **Implementation:** Store metrics aggregates (NOT raw CSV) in Supabase per
 authenticated user. Show MoM delta on dashboard. Account page shows history.
 
-**Effort:** 2-3 дня (каждый подшаг ~30-60 мин).
+**Effort:** 2-3 дня (каждый подшаг ~30-60 мин). **409 тестов проходят.**
 
-| # | Подшаг | Что делает |
-|---|--------|-----------|
-| v3.3.1 | Supabase таблица `snapshots` | Структура, миграция |
-| v3.3.2 | Сохранение метрик | Сохранять после загрузки CSV |
-| v3.3.3 | Загрузка истории | MoM дельта для дашборда |
-| v3.3.4 | UI: график MRR/churn | График по месяцам |
-| v3.3.5 | Account page | Список снапшотов |
-| v3.3.6 | Тесты + документация | Полный прогон, обновление docs |
+| # | Подшаг | Что делает | Статус |
+|---|--------|-----------|--------|
+| v3.3.1 | Supabase таблица `snapshots` | Структура, миграция | ✅ |
+| v3.3.2 | Сохранение метрик | Сохранять после загрузки CSV | ✅ |
+| v3.3.3 | Загрузка истории | MoM дельта для дашборда | ✅ |
+| v3.3.4 | UI: график MRR/churn | График по месяцам | ✅ |
+| v3.3.5 | Account page | Список снапшотов | ✅ |
+| v3.3.6 | Тесты + документация | Полный прогон, обновление docs | ✅ |
 
 ### v4 (later, only if validated by paying users)
 - Stripe / Paddle / Gumroad direct integrations (OAuth)

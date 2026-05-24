@@ -1,7 +1,7 @@
 # SubAudit — CLAUDE.md
 ## Инструкции для Claude Code и других AI-ассистентов
 
-**Последнее обновление:** 2026-05-23 (старт v3.3)
+**Последнее обновление:** 2026-05-30 (v3.3 завершён)
 
 ---
 
@@ -49,8 +49,8 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 | # | Фича | Срок | Зачем |
 |---|------|------|-------|
 | v3.1 | Voluntary vs Involuntary Churn split | 1 день | ✅ ЗАВЕРШЕНО — уникальная фича, никто не делает |
-| v3.2 | Multi-source CSV presets | 2-3 дня | Главный дифференциатор от ChartMogul |
-| v3.3 | Snapshot history (Supabase, 6 подшагов) | 2-3 дня | Retention механика |
+| v3.2 | Multi-source CSV presets | 2-3 дня | ✅ ЗАВЕРШЕНО — главный дифференциатор от ChartMogul |
+| v3.3 | Snapshot history (Supabase, 6 подшагов) | 2-3 дня | ✅ ЗАВЕРШЕНО — retention механика |
 
 
 **Детализация v3.2 (текущий фокус):**
@@ -92,12 +92,25 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 
 Все 6 подшагов v3.2 выполнены. 353 теста проходят. Multi-source CSV presets работают.
 
-### 🔜 Следующий шаг
+### ✅ v3.3 полностью завершён (2026-05-30)
 
-"**v3.2.6 — Документация + финальные тесты** — ЗАВЕРШЕНО ✅
+**Snapshot history.** 6 подшагов выполнены. 409 тестов проходят.
+Сохранение метрик после каждой загрузки CSV, MoM-дельта на дашборде,
+график MRR/Churn по месяцам, список снапшотов на странице аккаунта + CSV-экспорт.
 
-**Следующий этап: v3.3 — Snapshot history** (SPEC.md §8 v3.3)"
+### 🔜 Следующий этап
 
+**v4 (отложено до валидации платящими пользователями)**
+- Stripe / Paddle / Gumroad direct integrations (OAuth)
+- Scheduled email reports
+- Public share links
+
+
+### План анонса v3.3
+
+**Reddit (r/SaaS):** *"Upload your CSV once, SubAudit remembers your metrics month-over-month. See MRR, Churn, and NRR trends over time. No integrations — just re-upload next month. Free plan included."*
+
+**IndieHackers:** *"Shipping v3.3 — snapshot history. Your dashboard now shows MoM changes after just 2 uploads. Supabase-backed, free for all plans. Because you shouldn't need a spreadsheet to track if you're growing."*
 
 ### План анонса v3.2
 
