@@ -394,6 +394,58 @@ def _render_feedback_section() -> None:
         st.warning("Please log in to view your feedback history.")
 
 
+# v3.3.5 — секция списка снапшотов (Step 11)
+# ────────────────────────────────────────────────────────────────
+
+def _render_snapshots_section() -> None:
+    """
+    Секция «Your Snapshots»: таблица с историей метрик.
+    Только для авторизованных пользователей.
+    Если снапшотов нет — показать информационное сообщение.
+    """
+    st.divider()
+    st.subheader("📸 Your Snapshots")
+
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        st.info("Sign in to see your saved snapshots.")
+        return
+
+    # Отложенный импорт — не замедляет инициализацию модуля
+    from app.core.snapshot import get_snapshot_history
+
+    history = get_snapshot_history(user_id)
+
+    if not history or not history.get("periods"):
+        st.info(
+            "Your metrics will appear here after your next CSV upload. "
+            "Upload a file on the **Dashboard** page to save a snapshot."
+        )
+        return
+
+    # Строим плоскую таблицу: Period, MRR, ARPU, Churn, NRR
+    periods = history.get("periods", [])
+    mrr     = history.get("mrr", [])
+    arpu    = history.get("arpu", [])
+    churn   = history.get("churn_rate", [])
+    nrr     = history.get("nrr", [])
+
+    table_data = {
+        "Period":   periods,
+        "MRR ($)":  [f"${v:,.2f}" if v is not None else "—" for v in mrr],
+        "ARPU ($)": [f"${v:,.2f}" if v is not None else "—" for v in arpu],
+        "Churn":    [f"{v:.2%}" if v is not None else "—" for v in churn],
+        "NRR":      [f"{v:.2%}" if v is not None else "—" for v in nrr],
+    }
+
+    st.dataframe(
+        table_data,
+        use_container_width=True,
+        hide_index=True,
+    )
+    st.caption(f"{len(periods)} snapshot(s) saved.")
+
+
 def _render_upgrade_cta(plan: str) -> None:
     """
     CTA для апгрейда плана — показываем, если план не PRO.
@@ -522,6 +574,9 @@ def main() -> None:
 
     # Форма обратной связи — для всех авторизованных пользователей
     _render_feedback_section()
+
+    # v3.3.5 — таблица сохранённых снапшотов (Step 11)
+    _render_snapshots_section()
 
     # Кнопка выхода (Section 14)
     _render_logout()
