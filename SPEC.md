@@ -1,21 +1,16 @@
 # SubAudit — Specification v3.0
 
-**Version:** 3.2
-**Last updated:** 2026-05-30 (v3.2 завершён — multi-source CSV presets)
+**Version:** 3.3
+**Last updated:** 2026-05-30 (v3.3 завершён — snapshot history)
 **Supersedes:** SubAudit_Spec.docx (v2.x, removed)
 
 **Current status:**
 - ✅ v3.0 документация завершена (SPEC.md, STRATEGY.md, CLAUDE.md переписаны)
 - ✅ LemonSqueezy → Gumroad миграция завершена
-- ✅ **308/308 тестов проходят**
-- ✅ v3.1 Voluntary vs Involuntary Churn split — реализовано
-- ✅ v3.2.1 Каталог сигнатур — реализовано
-- ✅ v3.2.2 Детектор формата — реализовано (+25 тестов)
-- ✅ v3.2.3 Интеграция в upload flow — реализовано
-- ✅ v3.2.4 UI на mapping-странице — реализовано (зелёный баннер, предзаполнение, кнопка сброса, +8 тестов, 341 тест проходит)
-- ✅ v3.2.5 Авто-скип mapping — реализовано (+12 тестов, 353 теста проходят)
-- ✅ **v3.2 Multi-source CSV presets — ПОЛНОСТЬЮ ЗАВЕРШЁН**
-- ✅ v3.2.6 Документация + финальные тесты — завершено (2026-05-30)
+- ✅ **409/409 тестов проходят**
+- ✅ v3.1 Voluntary vs Involuntary Churn split — завершено
+- ✅ v3.2 Multi-source CSV presets — завершено (6 подшагов, 353 теста)
+- ✅ **v3.3 Snapshot history — завершено (6 подшагов, 409 тестов)**
 
 ---
 
@@ -108,7 +103,9 @@ app/
 │   ├── cleaner.py
 │   ├── metrics.py
 │   ├── forecast.py
-│   └── simulation.py
+│   ├── simulation.py
+│   ├── presets.py
+│   └── snapshot.py
 ├── reports/
 │   ├── pdf_builder.py
 │   └── excel_builder.py
@@ -239,6 +236,9 @@ authenticated user. Show MoM delta on dashboard. Account page shows history.
 
 1. **No data persistence of user CSVs.** Files processed in-memory only
    (`io.BytesIO`). No disk write. No third-party transfer.
+   **Exception:** Aggregated metrics snapshots (NOT raw rows) are stored in
+   Supabase for authenticated users (v3.3 snapshot history). This is opt-in
+   only — user must be logged in.
 2. **DataFrame immutability** — no mutations except in `cleaner.py`.
    Enforced by AST check in `test_immutability.py`.
 3. **Secrets never in git.** `.env` and `.streamlit/secrets.toml` are gitignored.
@@ -261,6 +261,9 @@ authenticated user. Show MoM delta on dashboard. Account page shows history.
 6. **Streamlit RAM limit ~1 GB** = ~3-4 concurrent PRO sessions max.
    Migration trigger when load testing fails.
 7. **Gumroad polling, not webhooks.** 5-minute cache, slight delay possible.
+8. **Snapshot history requires Supabase.** MoM delta and trend graphs are
+   only available for authenticated users. Free plan users must log in to
+   save metrics between sessions.
 
 ---
 
