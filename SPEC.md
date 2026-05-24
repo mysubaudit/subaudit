@@ -264,6 +264,10 @@ authenticated user. Show MoM delta on dashboard. Account page shows history.
 8. **Snapshot history requires Supabase.** MoM delta and trend graphs are
    only available for authenticated users. Free plan users must log in to
    save metrics between sessions.
+9. **Free login required for retention loop.** Free users without login get
+   one-time experience only — no data saved, no MoM delta, no return.
+   This is the #1 conversion blocker (confirmed 2026-05-24). Fix: enable
+   login for Free plan to save at least 1 snapshot.
 
 ---
 
