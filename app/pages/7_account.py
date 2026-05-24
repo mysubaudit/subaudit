@@ -445,6 +445,60 @@ def _render_snapshots_section() -> None:
     )
     st.caption(f"{len(periods)} snapshot(s) saved.")
 
+    # v3.3.5 — Step 12: CSV export button
+    _render_snapshot_export(history)
+
+
+# ────────────────────────────────────────────────────────────────
+# v3.3.5 — Step 12: CSV-экспорт истории снапшотов
+# ────────────────────────────────────────────────────────────────
+
+def _build_snapshot_csv(history: dict) -> str:
+    """
+    Build a CSV string from snapshot history dict.
+    Exports every column from the history, period first, metadata skipped.
+    """
+    import io, csv
+
+    # Remove service keys that shouldn't appear in export
+    skip_keys = {"snapshot_id", "user_id", "created_at", "source"}
+    period_key = "periods" if "periods" in history else "period"
+
+    # Build ordered column list: period first, then the rest
+    sorted_keys = sorted(history.keys())
+    export_keys = [period_key] + [k for k in sorted_keys if k not in skip_keys and k != period_key]
+
+    # Row count
+    n_rows = len(history.get(period_key, []))
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(export_keys)
+
+    for i in range(n_rows):
+        row = []
+        for key in export_keys:
+            val = history.get(key, [])
+            row.append(val[i] if isinstance(val, list) and i < len(val) else "")
+        writer.writerow(row)
+
+    return buf.getvalue()
+
+
+def _render_snapshot_export(history: dict) -> None:
+    """
+    Render a download button for CSV export of all snapshots.
+    Free for all plans (retention mechanic).
+    """
+    csv_data = _build_snapshot_csv(history)
+    st.download_button(
+        label="📥 Export history as CSV",
+        data=csv_data,
+        file_name="snapshots_history.csv",
+        mime="text/csv",
+        help="Download all your saved snapshots as a CSV file. Free for all plans.",
+    )
+
 
 def _render_upgrade_cta(plan: str) -> None:
     """
