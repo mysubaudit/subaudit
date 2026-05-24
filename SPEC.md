@@ -269,7 +269,14 @@ authenticated user. Show MoM delta on dashboard. Account page shows history.
 
 ## 11. Success metrics (next 90 days)
 
-| Metric | Target | Reality (2026-05-18) |
+### Critical DoD (blocker)
+- [ ] **Free login fix** — Free users без login не сохраняют данные,
+    retention loop отсутствует. Конверсия = 0. Подробнее: CLAUDE.md "Решения сессии 2026-05-24".
+    Фикс: Free login → save 1 snapshot, show MoM delta. Без этого маркетинг бесполезен.
+
+### Metrics
+
+| Metric | Target | Reality (2026-05-24) |
 |--------|--------|----------------------|
 | Reddit / IH outbound posts | 10 | 0 |
 | FREE signups | 50 | 0 |
