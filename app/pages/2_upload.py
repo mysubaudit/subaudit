@@ -21,7 +21,7 @@ import io
 # app/utils/page_setup.py — аналогичный вызов есть в каждой странице приложения
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity, render_login_gate
 from app.utils.ui_components import render_cta_button
 # v3.2.3: детектор формата CSV (SPEC.md §8)
 from app.core.presets import detect_preset, build_preset_mapping
@@ -268,6 +268,9 @@ def main() -> None:
         f"Format: **.csv only**"
     )
 
+    # 4a: Free login gate — login prompt для незалогиненных Free users
+    render_login_gate()
+
     # -----------------------------------------------------------------------
     # Виджет загрузки файла — label меняется если файл уже загружен
     # Все label/help тексты на английском (пользователь видит эти тексты)
@@ -491,6 +494,29 @@ def main() -> None:
 
     # Явное действие пользователя — обновляем last_activity (Section 14)
     record_activity()
+
+    # v3.3.2: auto-save snapshot после upload (side effect, никогда не блокирует UI)
+    if st.session_state.get("user_id") and not st.session_state.get("snapshot_saved", False):
+        from datetime import datetime
+        from app.core.snapshot import save_snapshot
+
+        user_id = st.session_state["user_id"]
+        period = datetime.utcnow().strftime("%Y-%m")
+        source = file_name
+
+        # Вычисляем метрики из df_processed (df_raw после дедупликации, до cleaning)
+        from app.core.metrics import get_all_metrics  # noqa: F401
+        metrics = get_all_metrics(df_processed)
+
+        # Side effect — UI не зависит от успеха snapshot
+        saved = save_snapshot(
+            user_id=user_id,
+            metrics=metrics,
+            period=period,
+            source=source,
+        )
+        if saved:
+            st.session_state["snapshot_saved"] = True
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Rows loaded", f"{len(df_processed):,}")
