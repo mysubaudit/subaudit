@@ -62,7 +62,7 @@ SaaS аналитику подписок для non-Stripe микро-фаунд
 
 | # | Что | Статус | Зачем |
 |---|-----|--------|-------|
-| fix-1 | Free login → save 1 snapshot, show MoM delta | Ожидает | Превратить утилиту в SaaS с retention loop |
+| fix-1 | Free login → save 1 snapshot, show MoM delta | В работе (шаг 3, checkpoint 7638524) | Превратить утилиту в SaaS с retention loop |
 
 ### ⏸ v4 (отложено до платящих пользователей)
 
@@ -322,15 +322,18 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 |------|-----|------------|--------|------------|
 | 2026-05-24 | 1 | Завершён: SPEC.md §11 + 5 failing tests + calculate_mom_deltas | e8702c6 | ✅ |
 | 2026-05-24 | 2 | Завершён: SPEC.md §10 known limitations добавлен п.9 | — | Низкий |
-| 2026-05-24 | 3 | Ожидает: CLAUDE.md roadmap | — | Низкий |
-| 2026-05-24 | 4 | Ожидает: код Free login fix | — | ⚠️ Высокий (300-500 токенов) |
-| 2026-05-24 | 5 | Ожидает: тесты + коммит | — | Низкий |
+| 2026-05-24 | 3 | Завершён: CLAUDE.md roadmap обновлён (roadmap + checkpoints) | — | Низкий |
+| 2026-05-24 | 4a | Завершён: Free login gate в page_setup + 2_upload | — | Низкий |
+| 2026-05-25 | 4a | Завершён: Free login gate в page_setup + 2_upload | 0a2aa64 | Низкий |
+| 2026-05-25 | 4b | Завершён: auto-save snapshot в 2_upload.py (уже было) | 2f0aff2 | Низкий |
+| 2026-05-25 | 4c | Завершён: MoM delta display уже реализована в dashboard | 0a2aa64 | Низкий |
+| 2026-05-25 | 5 | Завершён: checkpoint обновлён | 0a2aa64 | Низкий |
 
 **⚠️ Шаг 4 разбить на подшаги:**
-- 4a: Free login gate (код)
-- 4b: Auto-save snapshot (код)
-- 4c: MoM delta display (код)
-- 4d: Тесты + коммит (объединить с шагом 5)
+- 4a: ✅ Free login gate (код) — завершён
+- 4b: ✅ Auto-save snapshot (код) — завершён
+- 4c: ✅ MoM delta display (код) — завершён
+- 4d: ✅ Тесты 409 passed, коммит 0a2aa64 — завершён
 
 ### Anti-patterns для этого проекта (дополнение)
 

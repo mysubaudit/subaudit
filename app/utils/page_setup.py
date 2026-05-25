@@ -28,6 +28,8 @@ Section 14 (Session State) — record_activity обновляет last_activity.
 import time
 import streamlit as st
 
+from app.auth.supabase_auth import send_magic_link
+
 # ---------------------------------------------------------------------------
 # CSS — скрытие автонавигации Streamlit
 # ---------------------------------------------------------------------------
@@ -193,3 +195,62 @@ def record_activity() -> None:
     только внутри обработчиков действий.
     """
     st.session_state["last_activity"] = time.time()
+
+
+# ---------------------------------------------------------------------------
+# Free login gate — шаг 4a Free login fix
+# Показывает login prompt для незалогиненных пользователей перед загрузкой.
+# Не блокирует загрузку, но мотивирует залогиниться для сохранения snapshot.
+# ---------------------------------------------------------------------------
+
+def render_login_gate() -> None:
+    """
+    Показывает лёгкий login prompt для Free users без auth.
+
+    Цель: конверсия Free → logged-in. Залогиненные Free users сохраняют snapshot
+    (шаг 4b), что создаёт retention loop и превращает утилиту в SaaS.
+
+    Не блокирует загрузку — показываем как nudge, не gate.
+    """
+    user_email: str | None = st.session_state.get("user_email")
+    if user_email:
+        return  # Уже залогинен — ничего не показываем
+
+    user_plan: str = st.session_state.get("user_plan", "free")
+    if user_plan != "free":
+        return  # Платящие уже залогинены автоматически
+
+    st.divider()
+    st.info(
+        "🔐 **Save your data forever** — just sign in with email. "
+        "Upload without an account, but your data won't be saved between sessions."
+    )
+
+    email_input = st.text_input(
+        "Email to sign in",
+        placeholder="you@example.com",
+        key="login_gate_email",
+    )
+
+    last_sent = st.session_state.get("magic_link_last_sent")
+    seconds_since = time.time() - last_sent if last_sent else None
+
+    COOLDOWN = 60
+
+    if seconds_since is not None and seconds_since < COOLDOWN:
+        remaining = int(COOLDOWN - seconds_since)
+        st.caption(f"⏳ Wait {remaining}s before resend")
+        st.button("Send magic link", disabled=True, key="login_gate_btn")
+    else:
+        if st.button("Send magic link", key="login_gate_btn"):
+            if not email_input or "@" not in email_input:
+                st.error("Please enter a valid email address.")
+            else:
+                if send_magic_link(email_input.strip()):
+                    st.session_state["magic_link_last_sent"] = time.time()
+                    st.success(
+                        f"✅ Check your inbox at **{email_input.strip()}**. "
+                        "Click the link to sign in and save your data."
+                    )
+                else:
+                    st.error("Failed to send. Please try again.")
