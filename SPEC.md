@@ -125,7 +125,7 @@ tests/
 
 | Plan | Price | Login | Max rows | Metrics | Excel | Forecast | Simulation | PDF |
 |------|-------|-------|----------|---------|-------|----------|------------|-----|
-| FREE | $0 | No | 1,000 | Blocks 1-2 | No | No | No | Watermark |
+| FREE | $0 | Yes | 1,000 | Blocks 1-2 | No | No | No | Watermark |
 | STARTER | $9/mo | Yes | 10,000 | All 5 | Yes | Yes (≥3 mo) | No | No watermark |
 | PRO | $19/mo | Yes | 50,000 | All 5 | Yes | Yes | Yes | Branded |
 
