@@ -70,7 +70,7 @@ The Free plan includes:
 - Revenue & Growth metrics (Blocks 1-2)
 - PDF export with watermark
 - No credit card required
-- No account needed
+- Sign in with magic link (email) — your metrics are saved between sessions
 
 ### What's the difference between Starter and Pro?
 
