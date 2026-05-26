@@ -21,3 +21,11 @@ CREATE TABLE IF NOT EXISTS snapshots (
 
 -- Индекс для быстрой выборки истории пользователя
 CREATE INDEX IF NOT EXISTS idx_snapshots_user_period ON snapshots (user_id, period);
+
+-- ── RLS: пользователь видит только свои snapshots ───────────────────────────
+ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users_see_only_own_snapshots" ON snapshots
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
