@@ -30,21 +30,11 @@ Thumbs.db
 
 # AI-ассистент (шпаргалки, не коммитить)
 .claude/
-
-# Логи и временные файлы
-*.log
-test_results.log
-
-# Архивные документы
-archive/
-
-After applying edit:
-
-We add "WORKDIR.txt" on a new line after .claude/. So the AI section becomes:
-
-# AI-ассистент (шпаргалки, не коммитить)
-.claude/
 WORKDIR.txt
+
+# Чеклисты и скрипты генерации (личные)
+manual_review_checklist.txt
+generate_large_csv.py
 
 Everything else stays same.
 

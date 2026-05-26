@@ -502,6 +502,7 @@ st.markdown("""
     <div class="nav-links">
         <a class="nav-link" href="/upload"  target="_self">Upload</a>
         <a class="nav-link" href="/pricing" target="_self">Pricing</a>
+        <a class="nav-link" href="/8_help" target="_self">Help</a>
         <a class="nav-btn"  href="/account" target="_self">⚙ Account</a>
         <a class="nav-btn-primary" href="/upload" target="_self">Get started →</a>
     </div>
@@ -926,9 +927,9 @@ with st.expander("💳 Refund Policy", expanded=False):
 
 We want you to be satisfied with SubAudit. If the Service does not meet your expectations, we offer a straightforward refund process.
 
-**7-Day Money-Back Guarantee**
+**30-Day Money-Back Guarantee**
 
-If you are not satisfied with your Starter or Pro subscription, you may request a full refund within **7 days** of your initial purchase. No questions asked.
+If you are not satisfied with your Starter or Pro subscription, you may request a full refund within **30 days** of your initial purchase. No questions asked.
 
 To request a refund, email us at **biz.sardorbek@gmail.com** with:
 - The email address used to purchase
@@ -972,6 +973,8 @@ st.markdown("""
     <a href="/upload"   target="_self" style="color: #4F8EF7; text-decoration:none;">Get started</a>
     &nbsp;·&nbsp;
     <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
+    &nbsp;·&nbsp;
+    <a href="/8_help"  target="_self" style="color: #4F8EF7; text-decoration:none;">Help</a>
     &nbsp;·&nbsp;
     <a href="/account"  target="_self" style="color: #4F8EF7; text-decoration:none;">Account</a>
     <br><br>

@@ -96,7 +96,7 @@ Yes. Subscriptions are monthly and can be cancelled at any time from your Accoun
 
 ### Do you offer refunds?
 
-Yes. We offer a **7-day money-back guarantee** on all paid plans. If you're not satisfied, email us at **biz.sardorbek@gmail.com** within 7 days of purchase for a full refund.
+Yes. We offer a **30-day money-back guarantee** on all paid plans. If you're not satisfied, email us at **biz.sardorbek@gmail.com** within 30 days of purchase for a full refund.
 
 ---
 

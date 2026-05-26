@@ -372,6 +372,14 @@ def render_pricing_page() -> None:
             "Mixed-tier modelling is on the v2 roadmap."
         )
 
+    with st.expander("I have more questions — where can I get help?"):
+        st.markdown(
+            "Visit the **[Help page](/8_help)** for a step-by-step guide, "
+            "CSV format examples, metrics glossary, and FAQ. "
+            "You can also email us directly at "
+            "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)."
+        )
+
     st.markdown("---")
 
     # ── Навигационные кнопки — тексты на английском ──────────────────────────
@@ -387,7 +395,9 @@ def render_pricing_page() -> None:
     # Короткая строка для вопросов — видна всем пользователям на странице тарифов
     st.markdown(
         "<div style='text-align:center; color:gray; margin-top:1rem;'>"
-        "Questions about plans? Write to us: "
+        "Questions about plans? "
+        "<a href='/8_help' target='_self' style='color:#4F8EF7;'>Visit Help page</a> "
+        "or write to us: "
         "<a href='mailto:biz.sardorbek@gmail.com'>biz.sardorbek@gmail.com</a>"
         "</div>",
         unsafe_allow_html=True,

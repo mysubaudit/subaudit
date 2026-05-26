@@ -157,6 +157,9 @@ def render_sidebar() -> None:
         # Pricing — всегда (пользователь должен видеть возможность апгрейда)
         st.page_link("pages/6_pricing.py", label="💰 Pricing")
 
+        # Help — всегда (пользователь может застрять на любом этапе)
+        st.page_link("pages/8_help.py", label="❓ Help")
+
         # Account — только если залогинен
         if user_logged_in:
             st.page_link("pages/7_account.py", label="👤 Account")
