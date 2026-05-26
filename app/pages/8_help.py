@@ -85,7 +85,7 @@ with tab1:
         - PDF export with watermark
         - No Excel, no Forecast, no Simulation
         """)
-with col2:
+    with col2:
         st.markdown("### ⭐ Starter — $9/mo")
         st.markdown("""
         - **10,000 rows** per session
@@ -93,14 +93,6 @@ with col2:
         - PDF export without watermark
         - Excel export with formulas
         - Revenue forecast (3+ months)
-        """)
-    with col3:
-        st.markdown("### 🚀 Pro — $19/mo")
-        st.markdown("""
-        - **50,000 rows** per session
-        - Everything in Starter
-        - **Growth Simulation** dashboard
-        - Branded PDF with your company name
         """)
     with col3:
         st.markdown("### 🚀 Pro — $19/mo")
