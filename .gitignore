@@ -73,3 +73,5 @@ test_results.log
 
 # Архивные документы
 archive/
+marketing_posts_plan.txt 
+*.docx 
