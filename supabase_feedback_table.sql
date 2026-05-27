@@ -15,16 +15,28 @@ CREATE INDEX IF NOT EXISTS idx_feedback_user_email ON feedback(user_email);
 -- Индекс для сортировки по дате
 CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
 
--- Row Level Security (RLS) — пользователи могут только вставлять свои отзывы
+-- Row Level Security (RLS)
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
--- Политика: любой аутентифицированный пользователь может вставить отзыв
-CREATE POLICY "Users can insert their own feedback"
+-- Политика INSERT: пользователь может вставить отзыв ТОЛЬКО от своего email
+-- (auth.uid() даёт текущего пользователя, auth.users.email проверяет его email)
+CREATE POLICY "users_insert_own_feedback"
   ON feedback
   FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (
+    user_email = (
+      SELECT email FROM auth.users WHERE id = auth.uid()
+    )
+  );
 
--- Политика: только admin может читать все отзывы (опционально)
--- Если хочешь видеть отзывы в Dashboard, эта политика не нужна —
--- Dashboard использует service_role key, который обходит RLS
+-- Политика SELECT: пользователь может читать ТОЛЬКО свои отзывы
+CREATE POLICY "users_read_own_feedback"
+  ON feedback
+  FOR SELECT
+  TO authenticated
+  USING (
+    user_email = (
+      SELECT email FROM auth.users WHERE id = auth.uid()
+    )
+  );
