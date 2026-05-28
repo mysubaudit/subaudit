@@ -584,7 +584,7 @@ st.markdown("""
             <div class="feature-name">Block 3 — Retention</div>
             <div class="feature-desc">
                 Total churn rate split into Voluntary (cancelled) vs Involuntary
-                (payment failed). Revenue Churn with 4 distinct scenarios.
+                (payment failed). Revenue Churn with 3 distinct scenarios.
                 NRR clamped to 0–999% with data-quality warnings.
             </div>
         </div>
@@ -736,7 +736,7 @@ st.markdown("""
 <div class="trust-bar">
     <div class="trust-bar-inner">
         <span class="trust-item"><span class="ti">🔒</span> In-memory processing only</span>
-        <span class="trust-item"><span class="ti">📋</span> CSV — 6 billing source presets (v3.2)</span>
+        <span class="trust-item"><span class="ti">📋</span> CSV — 6 billing source presets</span>
         <span class="trust-item"><span class="ti">⚡</span> Powered by HoltWinters + pandas</span>
         <span class="trust-item"><span class="ti">🐍</span> Python 3.11 · Streamlit Cloud</span>
         <span class="trust-item"><span class="ti">💳</span> Payments via Gumroad</span>

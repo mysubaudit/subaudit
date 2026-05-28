@@ -175,7 +175,7 @@ def render_sidebar() -> None:
             )
             st.caption(f"Signed in as: {masked}")
 
-        st.caption("SubAudit v1.0")
+        st.caption("SubAudit v3.3")
 
         # Закрываем маркер контента
         st.markdown('</div>', unsafe_allow_html=True)

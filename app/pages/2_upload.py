@@ -223,6 +223,10 @@ def main() -> None:
     render_sidebar()
 
     st.title("📂 Upload Your Data")
+    st.caption(
+        '← <a href="/1_landing" target="_self" style="color: #4F8EF7; text-decoration: none;">Back to Landing</a>',
+        unsafe_allow_html=True,
+    )
 
     # -----------------------------------------------------------------------
     # Inline help tooltip — что ожидать от этой страницы
