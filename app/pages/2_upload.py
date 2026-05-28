@@ -241,7 +241,7 @@ def main() -> None:
 
     **Processing time:** ~5-30 seconds depending on file size.
 
-    💡 **Tip:** Not sure about the format? Visit the [Help page](/8_help) to download a sample CSV.
+    💡 **Tip:** Not sure about the format? Visit the [Help page](/pricing) to download a sample CSV.
     """)
 
     # -----------------------------------------------------------------------

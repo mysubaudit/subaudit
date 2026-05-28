@@ -489,8 +489,8 @@ div[data-testid="stButton"] > button:hover { filter: brightness(1.12) !important
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ── NAV ──────────────────────────────────────────────────────────────────────
-# Проблема 3: Account кнопка в шапке
-# Все ссылки ведут на реальные страницы, НЕТ якорей #pricing
+# HTML-ссылки для логотипа, st.page_link для навигации
+# (st.page_link работает через Streamlit dispatcher, не через HTTP redirect)
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <nav class="top-nav">
@@ -499,15 +499,22 @@ st.markdown("""
         <span style="color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;">—</span>
         <span class="tagline">Know your churn</span>
     </a>
-    <div class="nav-links">
-        <a class="nav-link" href="/upload"  target="_self">Upload</a>
-        <a class="nav-link" href="/pricing" target="_self">Pricing</a>
-        <a class="nav-link" href="/8_help" target="_self">Help</a>
-        <a class="nav-btn"  href="/account" target="_self">⚙ Account</a>
-        <a class="nav-btn-primary" href="/upload" target="_self">Get started →</a>
+    <div class="nav-links" id="nav-links">
     </div>
 </nav>
 """, unsafe_allow_html=True)
+
+col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns([1, 1, 1, 1, 1])
+with col_nav1:
+    st.page_link("pages/2_upload.py", label="Upload",   icon=None)
+with col_nav2:
+    st.page_link("pages/6_pricing.py", label="Pricing",  icon=None)
+with col_nav3:
+    st.page_link("pages/8_help.py",    label="Help",     icon=None)
+with col_nav4:
+    st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
+with col_nav5:
+    st.page_link("pages/2_upload.py", label="Get started →", icon=None)
 
 # ── HERO ─────────────────────────────────────────────────────────────────────
 # FIX: "View pricing" → /pricing (не #pricing)
@@ -974,7 +981,7 @@ st.markdown("""
     &nbsp;·&nbsp;
     <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
     &nbsp;·&nbsp;
-    <a href="/8_help"  target="_self" style="color: #4F8EF7; text-decoration:none;">Help</a>
+    <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Help</a>
     &nbsp;·&nbsp;
     <a href="/account"  target="_self" style="color: #4F8EF7; text-decoration:none;">Account</a>
     <br><br>
