@@ -981,7 +981,7 @@ st.markdown("""
     &nbsp;·&nbsp;
     <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Pricing</a>
     &nbsp;·&nbsp;
-    <a href="/pricing"  target="_self" style="color: #4F8EF7; text-decoration:none;">Help</a>
+    <a href="/help"     target="_self" style="color: #4F8EF7; text-decoration:none;">Help</a>
     &nbsp;·&nbsp;
     <a href="/account"  target="_self" style="color: #4F8EF7; text-decoration:none;">Account</a>
     <br><br>
