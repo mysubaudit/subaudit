@@ -542,17 +542,20 @@ with col_right:
     </style>
     """, unsafe_allow_html=True)
 
-    link_cols = st.columns(5)
-    with link_cols[0]:
-        st.page_link("pages/2_upload.py", label="Upload",   icon=None)
-    with link_cols[1]:
-        st.page_link("pages/6_pricing.py", label="Pricing",  icon=None)
-    with link_cols[2]:
-        st.page_link("pages/8_help.py",    label="Help",     icon=None)
-    with link_cols[3]:
-        st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
-    with link_cols[4]:
-        st.page_link("pages/2_upload.py", label="Get started →", icon=None)
+    # Nav links: compact, right-aligned cluster
+    gap = st.container()
+    with gap:
+        cols = st.columns([6, 1, 1, 1, 1, 1, 2], gap="small")
+        with cols[1]:
+            st.page_link("pages/2_upload.py", label="Upload", icon=None)
+        with cols[2]:
+            st.page_link("pages/6_pricing.py", label="Pricing", icon=None)
+        with cols[3]:
+            st.page_link("pages/8_help.py",    label="Help",    icon=None)
+        with cols[4]:
+            st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
+        with cols[5]:
+            st.page_link("pages/2_upload.py", label="Get started →", icon=None)
 
 # ── HERO ─────────────────────────────────────────────────────────────────────
 # FIX: "View pricing" → /pricing (не #pricing)
