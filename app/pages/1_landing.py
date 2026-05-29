@@ -504,17 +504,55 @@ st.markdown("""
 </nav>
 """, unsafe_allow_html=True)
 
-col_nav1, col_nav2, col_nav3, col_nav4, col_nav5 = st.columns([1, 1, 1, 1, 1])
-with col_nav1:
-    st.page_link("pages/2_upload.py", label="Upload",   icon=None)
-with col_nav2:
-    st.page_link("pages/6_pricing.py", label="Pricing",  icon=None)
-with col_nav3:
-    st.page_link("pages/8_help.py",    label="Help",     icon=None)
-with col_nav4:
-    st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
-with col_nav5:
-    st.page_link("pages/2_upload.py", label="Get started →", icon=None)
+# Right-aligned navigation — compact pill-style links
+col_left, col_right = st.columns([3, 24])
+with col_left:
+    st.markdown("", unsafe_allow_html=True)  # spacer
+
+with col_right:
+    st.markdown("""
+    <style>
+    .nav-page-links { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+    .nav-page-links > div { display: contents; }
+    .nav-page-links button {
+        background: rgba(255,255,255,0.04) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        border-radius: 6px !important;
+        color: #8B949E !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        padding: 5px 14px !important;
+        min_width: unset !important;
+        transition: all 0.15s !important;
+        white-space: nowrap !important;
+    }
+    .nav-page-links button:hover {
+        background: rgba(255,255,255,0.09) !important;
+        color: #E6EDF3 !important;
+        border-color: rgba(255,255,255,0.18) !important;
+    }
+    .nav-page-links > div > div > div > div:last-child button {
+        background: rgba(79,142,247,0.10) !important;
+        border-color: rgba(79,142,247,0.30) !important;
+        color: #4F8EF7 !important;
+    }
+    .nav-page-links > div > div > div > div:last-child button:hover {
+        background: rgba(79,142,247,0.20) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    link_cols = st.columns(5)
+    with link_cols[0]:
+        st.page_link("pages/2_upload.py", label="Upload",   icon=None)
+    with link_cols[1]:
+        st.page_link("pages/6_pricing.py", label="Pricing",  icon=None)
+    with link_cols[2]:
+        st.page_link("pages/8_help.py",    label="Help",     icon=None)
+    with link_cols[3]:
+        st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
+    with link_cols[4]:
+        st.page_link("pages/2_upload.py", label="Get started →", icon=None)
 
 # ── HERO ─────────────────────────────────────────────────────────────────────
 # FIX: "View pricing" → /pricing (не #pricing)

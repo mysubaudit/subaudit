@@ -11,6 +11,12 @@ from app.utils.page_setup import inject_nav_css, render_sidebar
 inject_nav_css()
 render_sidebar()
 
+# Back to landing link
+st.caption(
+    '<a href="/1_landing" target="_self" style="color: #4F8EF7; text-decoration: none; font-size: 14px;">← Back to Landing</a>',
+    unsafe_allow_html=True,
+)
+
 st.title("❓ Help & User Guide")
 
 # Quick navigation tabs
