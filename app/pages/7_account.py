@@ -578,6 +578,11 @@ def main() -> None:
 
     st.title("👤 Account")
 
+    st.caption(
+        '<a href="/" target="_self" style="color: #4F8EF7; text-decoration: none; font-size: 14px;">← Back to Landing</a>',
+        unsafe_allow_html=True,
+    )
+
     # Проверяем авторизацию (Section 14: user_email)
     _require_login()
 
