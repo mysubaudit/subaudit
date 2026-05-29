@@ -44,8 +44,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import streamlit as st
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from typing import Optional
+
+# Лейзи-импорт: statsmodels загружается только при реальном вызове forecast.
+# Модуль импортирует forecast.py при старте Streamlit — экономия ~2.5 сек на каждом запросе.
+# noqa нужен чтобы моки в тестах (patch "app.core.forecast.ExponentialSmoothing") работали.
+from statsmodels.tsa.holtwinters import ExponentialSmoothing  # noqa: E402, F401
 
 # ---------------------------------------------------------------------------
 # FIX-1: Защищённый импорт calculate_churn_rate (Section 10, Section 17).
@@ -314,6 +318,9 @@ def _fit_no_seasonal(
     Section 10: MANDATORY try/except (ValueError, numpy.linalg.LinAlgError).
     FIX-3: явная проверка вырождения до фитинга.
     """
+    # Lazy import — statsmodels загружается только при реальном вызове (15 сэкономленных)
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
     try:
         if np.unique(values).size == 1:
             raise ValueError(
@@ -345,6 +352,9 @@ def _fit_no_seasonal_silent(
     warning уже был показан. Повторный warning вводил бы пользователя в
     заблуждение — показываем предупреждение только один раз.
     """
+    # Lazy import — statsmodels загружается только при реальном вызове
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
     try:
         if np.unique(values).size == 1:
             raise ValueError("Degenerate series: all values are identical.")
@@ -386,6 +396,9 @@ def _fit_with_seasonal(
       - trailing zeros         → LinAlgError при MLE → перехватывается
       - degenerate seasonality → ValueError/LinAlgError → перехватывается
     """
+    # Lazy import — statsmodels загружается только при реальном вызове
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
     n: int = len(values)
 
     # FIX-2: 2 полных сезона гарантированы
