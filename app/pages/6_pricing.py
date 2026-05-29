@@ -382,11 +382,11 @@ def render_pricing_page() -> None:
 
     st.markdown("---")
 
-    # ── Навигационные кнопки — тексты на английском ──────────────────────────
+    # ── Навигационные кнопки ──────────────────────────────────────────────
     col_left, col_right = st.columns(2)
     with col_left:
-        if st.button("← Back to Dashboard", use_container_width=True):
-            st.switch_page("pages/5_dashboard.py")
+        if st.button("← Back to Landing", use_container_width=True):
+            st.switch_page("pages/1_landing.py")
     with col_right:
         if st.button("Go to Account →", use_container_width=True):
             st.switch_page("pages/7_account.py")

@@ -39,26 +39,45 @@ from app.auth.supabase_auth import send_magic_link
 # Скрываем через CSS и заменяем на контролируемую навигацию (render_sidebar).
 _NAV_CSS = """
 <style>
-    /* Скрываем автогенерируемый список страниц */
-    [data-testid="stSidebarNav"]          { display: none !important; }
-    [data-testid="stSidebarNavItems"]     { display: none !important; }
-
-    /* Убираем отступ, который Streamlit оставляет под скрытой навигацией */
-    section[data-testid="stSidebar"] > div:first-child { padding-top: 1rem; }
-
-    /* Скрываем пустой sidebar полностью (когда render_sidebar делает early return) */
-    section[data-testid="stSidebar"] {
+    /* Скрываем автогенерируемый список страниц (ВСЕГДА) */
+    * [data-testid="stSidebarNav"],
+    [data-testid="stSidebar"] [data-testid="stSidebarNav"],
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarNavItems"],
+    [data-testid="stSidebar"] [data-testid="stSidebarNavItems"] {
         display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
     }
 
-    /* Скрываем кнопку открытия/закрытия sidebar (крестик и hamburger) */
+    /* Скрываем весь sidebar по умолчанию (без данных нет навигации) */
+    section[data-testid="stSidebar"] {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+
+    /* Скрываем кнопку открытия/закрытия sidebar */
     button[data-testid="collapsedControl"] {
         display: none !important;
     }
 
     /* Показываем sidebar только если внутри есть контент */
     section[data-testid="stSidebar"]:has(.sidebar-content) {
-        display: block !important;
+        display: flex !important;
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
+        overflow: visible !important;
     }
 </style>
 """
