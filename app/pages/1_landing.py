@@ -488,35 +488,48 @@ div[data-testid="stButton"] > button:hover { filter: brightness(1.12) !important
 
 st.markdown(CUSTOM_CSS + """
 <style>
-.nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0 5%; height: 60px; }
-.nav-links-group { display: flex; align-items: center; gap: 8px; }
+.nav-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 0 5%; height: 64px;
+    background: rgba(13,17,23,0.96);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 999;
+}
+.nav-links-group { display: flex; align-items: center; gap: 4px; }
 .nav-link {
     font-size: 14px; font-weight: 500;
     color: #8B949E !important; text-decoration: none !important;
-    padding: 6px 12px; border-radius: 6px;
+    padding: 7px 14px; border-radius: 6px;
     transition: color 0.15s, background 0.15s;
+    letter-spacing: 0.01em;
 }
 .nav-link:hover { color: #E6EDF3 !important; background: rgba(255,255,255,0.06); }
 .nav-cta {
-    font-size: 13px; font-weight: 600;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
     color: #fff !important; text-decoration: none !important;
-    padding: 7px 16px; border-radius: 6px;
-    background: #4F8EF7; transition: filter 0.15s;
+    padding: 8px 20px; border-radius: 6px;
+    background: #4F8EF7; border: 1px solid #4F8EF7;
+    transition: filter 0.15s, transform 0.15s;
+    margin-left: 8px;
 }
-.nav-cta:hover { filter: brightness(1.12); }
+.nav-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.nav-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.1); margin: 0 4px; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="nav-row">
     <a class="nav-logo" href="/" target="_self">
-        <span class="brand">Sub<span style="color:#4F8EF7">Audit</span></span>
-        <span style="color:#8B949E; font-size:14px; font-weight:500;">—</span>
-        <span class="tagline" style="color:#8B949E; font-size:14px;">Know your churn</span>
+        <span class="brand" style="font-family:'DM Sans',sans-serif; font-size:22px; font-weight:600;">
+            Sub<span style="color:#4F8EF7;">Audit</span>
+        </span>
+        <span style="color:#555; font-size:15px; font-weight:300; margin: 0 8px;">|</span>
+        <span style="color:#6E7681; font-size:13px; letter-spacing:0.04em;">Know your churn</span>
     </a>
     <div class="nav-links-group">
-        <a class="nav-link" href="/upload"    target="_self">Upload</a>
-        <a class="nav-link" href="/pricing"   target="_self">Pricing</a>
+        <a class="nav-link" href="/pricing"  target="_self">Pricing</a>
         <a class="nav-link" href="/help"      target="_self">Help</a>
         <a class="nav-link" href="/account"   target="_self">⚙ Account</a>
         <a class="nav-cta"  href="/upload"    target="_self">Get started →</a>
