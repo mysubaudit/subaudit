@@ -486,74 +486,43 @@ div[data-testid="stButton"] > button:hover { filter: brightness(1.12) !important
 </style>
 """
 
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
-# ── NAV ──────────────────────────────────────────────────────────────────────
-# HTML-ссылки для логотипа, st.page_link для навигации
-# (st.page_link работает через Streamlit dispatcher, не через HTTP redirect)
-# ─────────────────────────────────────────────────────────────────────────────
-st.markdown("""
-<nav class="top-nav">
-    <a class="nav-logo" href="/" target="_self">
-        <span class="brand">Sub<span class="accent">Audit</span></span>
-        <span style="color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;">—</span>
-        <span class="tagline">Know your churn</span>
-    </a>
-    <div class="nav-links" id="nav-links">
-    </div>
-</nav>
+st.markdown(CUSTOM_CSS + """
+<style>
+.nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0 5%; height: 60px; }
+.nav-links-group { display: flex; align-items: center; gap: 8px; }
+.nav-link {
+    font-size: 14px; font-weight: 500;
+    color: #8B949E !important; text-decoration: none !important;
+    padding: 6px 12px; border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.nav-link:hover { color: #E6EDF3 !important; background: rgba(255,255,255,0.06); }
+.nav-cta {
+    font-size: 13px; font-weight: 600;
+    color: #fff !important; text-decoration: none !important;
+    padding: 7px 16px; border-radius: 6px;
+    background: #4F8EF7; transition: filter 0.15s;
+}
+.nav-cta:hover { filter: brightness(1.12); }
+</style>
 """, unsafe_allow_html=True)
 
-# Right-aligned navigation — compact pill-style links
-col_left, col_right = st.columns([3, 24])
-with col_left:
-    st.markdown("", unsafe_allow_html=True)  # spacer
-
-with col_right:
-    st.markdown("""
-    <style>
-    .nav-page-links { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
-    .nav-page-links > div { display: contents; }
-    .nav-page-links button {
-        background: rgba(255,255,255,0.04) !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        border-radius: 6px !important;
-        color: #8B949E !important;
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        padding: 5px 14px !important;
-        min_width: unset !important;
-        transition: all 0.15s !important;
-        white-space: nowrap !important;
-    }
-    .nav-page-links button:hover {
-        background: rgba(255,255,255,0.09) !important;
-        color: #E6EDF3 !important;
-        border-color: rgba(255,255,255,0.18) !important;
-    }
-    .nav-page-links > div > div > div > div:last-child button {
-        background: rgba(79,142,247,0.10) !important;
-        border-color: rgba(79,142,247,0.30) !important;
-        color: #4F8EF7 !important;
-    }
-    .nav-page-links > div > div > div > div:last-child button:hover {
-        background: rgba(79,142,247,0.20) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Nav links — right-aligned, compact, small gaps
-    cols = st.columns([6, 1, 1, 1, 1, 1, 2], gap="small")
-    with cols[1]:
-        st.page_link("pages/2_upload.py", label="Upload", icon=None)
-    with cols[2]:
-        st.page_link("pages/6_pricing.py", label="Pricing", icon=None)
-    with cols[3]:
-        st.page_link("pages/8_help.py",    label="Help",    icon=None)
-    with cols[4]:
-        st.page_link("pages/7_account.py", label="⚙ Account", icon=None)
-    with cols[5]:
-        st.page_link("pages/2_upload.py", label="Get started →", icon=None)
+st.markdown("""
+<div class="nav-row">
+    <a class="nav-logo" href="/" target="_self">
+        <span class="brand">Sub<span style="color:#4F8EF7">Audit</span></span>
+        <span style="color:#8B949E; font-size:14px; font-weight:500;">—</span>
+        <span class="tagline" style="color:#8B949E; font-size:14px;">Know your churn</span>
+    </a>
+    <div class="nav-links-group">
+        <a class="nav-link" href="/upload"    target="_self">Upload</a>
+        <a class="nav-link" href="/pricing"   target="_self">Pricing</a>
+        <a class="nav-link" href="/help"      target="_self">Help</a>
+        <a class="nav-link" href="/account"   target="_self">⚙ Account</a>
+        <a class="nav-cta"  href="/upload"    target="_self">Get started →</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── HERO ─────────────────────────────────────────────────────────────────────
 # FIX: "View pricing" → /pricing (не #pricing)

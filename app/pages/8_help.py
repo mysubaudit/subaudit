@@ -13,7 +13,7 @@ render_sidebar()
 
 # Back to landing link
 st.caption(
-    '<a href="/1_landing" target="_self" style="color: #4F8EF7; text-decoration: none; font-size: 14px;">← Back to Landing</a>',
+    '<a href="/" target="_self" style="color: #4F8EF7; text-decoration: none; font-size: 14px;">← Back to Landing</a>',
     unsafe_allow_html=True,
 )
 
