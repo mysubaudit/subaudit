@@ -374,7 +374,7 @@ def render_pricing_page() -> None:
 
     with st.expander("I have more questions — where can I get help?"):
         st.markdown(
-            "Visit the **[Help page](/pricing)** for a step-by-step guide, "
+            "Visit the **[Help page](/help)** for a step-by-step guide, "
             "CSV format examples, metrics glossary, and FAQ. "
             "You can also email us directly at "
             "[biz.sardorbek@gmail.com](mailto:biz.sardorbek@gmail.com)."
@@ -396,7 +396,7 @@ def render_pricing_page() -> None:
     st.markdown(
         "<div style='text-align:center; color:gray; margin-top:1rem;'>"
         "Questions about plans? "
-        "<a href='/pricing' target='_self' style='color:#4F8EF7;'>Visit Help page</a> "
+        "<a href='/help' target='_self' style='color:#4F8EF7;'>Visit Help page</a> "
         "or write to us: "
         "<a href='mailto:biz.sardorbek@gmail.com'>biz.sardorbek@gmail.com</a>"
         "</div>",

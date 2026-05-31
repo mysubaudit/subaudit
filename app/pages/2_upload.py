@@ -226,8 +226,9 @@ def main() -> None:
 
     col_nav, _ = st.columns([1, 4])
     with col_nav:
-        st.page_link("pages/1_landing.py", label="← Back to Landing", icon=None)
-        st.markdown("", unsafe_allow_html=True)  # visual gap after link
+        if st.button("← Back to Landing", use_container_width=True):
+            st.switch_page("pages/1_landing.py")
+        st.markdown("", unsafe_allow_html=True)  # visual gap after button
 
     # -----------------------------------------------------------------------
     # Inline help tooltip — что ожидать от этой страницы
@@ -242,7 +243,7 @@ def main() -> None:
 
     **Processing time:** ~5-30 seconds depending on file size.
 
-    💡 **Tip:** Not sure about the format? Visit the [Help page](/pricing) to download a sample CSV.
+    💡 **Tip:** Not sure about the format? Visit the [Help page](/help) to download a sample CSV.
     """)
 
     # -----------------------------------------------------------------------
