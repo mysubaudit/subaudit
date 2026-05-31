@@ -46,9 +46,9 @@ def render_cta_button(
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.link_button(
+        st.page_link(
+            target_page,
             label=button_label,
-            url=target_page,
-            type="primary",
+            icon="▶️",
             use_container_width=True,
         )
