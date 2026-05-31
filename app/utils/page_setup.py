@@ -39,8 +39,8 @@ def handle_cta_redirect():
     Проверяет, есть ли отложенная навигация из CTA кнопок.
     Должна вызываться в начале каждой страницы после render_sidebar().
     """
-    if "_cta_target" in st.session_state:
-        target = st.session_state.pop("_cta_target")
+    if "_navigate_to" in st.session_state:
+        target = st.session_state.pop("_navigate_to")
         st.switch_page(target)
 
 # ---------------------------------------------------------------------------
