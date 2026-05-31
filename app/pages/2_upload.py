@@ -290,8 +290,7 @@ def main() -> None:
 
     uploaded_file = st.file_uploader(
         label=file_uploader_label,
-        type=["csv"],                   # Только .csv (Section 3)
-        accept_multiple_files=False,    # Section 3: 1 файл на сессию
+        type=["csv"],
         help="Only .csv format is supported. Maximum file size is 15 MB.",
     )
 
