@@ -46,9 +46,32 @@ def render_cta_button(
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.page_link(
-            target_page,
-            label=button_label,
-            icon="▶️",
-            use_container_width=True,
+        # Используем HTML ссылку для надёжной навигации
+        # target_page вида "pages/5_dashboard.py" -> "/5_dashboard"
+        page_path = target_page.replace("pages/", "").replace(".py", "")
+        href = f"/{page_path}"
+        st.markdown(
+            f'''
+            <style>
+            .cta-button {{
+                display: inline-block;
+                width: 100%;
+                padding: 0.75rem 1.5rem;
+                background: #667eea;
+                color: white !important;
+                border: none;
+                border-radius: 8px;
+                text-align: center;
+                font-size: 1rem;
+                font-weight: 600;
+                text-decoration: none !important;
+                cursor: pointer;
+            }}
+            .cta-button:hover {{
+                background: #5a6fd6;
+            }}
+            </style>
+            <a href="{href}" target="_self" class="cta-button">{button_label}</a>
+            ''',
+            unsafe_allow_html=True,
         )
