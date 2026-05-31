@@ -73,10 +73,14 @@ def _recheck_plan() -> str:
     Вызывается при загрузке дашборда.
     st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
-    user_email: str | None = st.session_state.get("user_email")
-    plan = get_subscription_status(user_email)
-    st.session_state["user_plan"] = plan
-    return plan
+    try:
+        user_email: str | None = st.session_state.get("user_email")
+        plan = get_subscription_status(user_email)
+        st.session_state["user_plan"] = plan
+        return plan
+    except Exception:
+        # При ошибке возвращаем cached план или free
+        return st.session_state.get("user_plan", "free")
 
 
 def _recheck_plan_for_export() -> str:
@@ -85,10 +89,14 @@ def _recheck_plan_for_export() -> str:
     Section 2: «Plan MUST be re-verified from Gumroad BEFORE generating any PDF or Excel».
     st.spinner уже внутри get_subscription_status() — дополнительная обёртка убрана.
     """
-    user_email: str | None = st.session_state.get("user_email")
-    plan = get_subscription_status(user_email)
-    st.session_state["user_plan"] = plan
-    return plan
+    try:
+        user_email: str | None = st.session_state.get("user_email")
+        plan = get_subscription_status(user_email)
+        st.session_state["user_plan"] = plan
+        return plan
+    except Exception:
+        # При ошибке возвращаем cached план или free
+        return st.session_state.get("user_plan", "free")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
