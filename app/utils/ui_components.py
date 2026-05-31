@@ -46,10 +46,9 @@ def render_cta_button(
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button(
-            button_label,
+        st.link_button(
+            label=button_label,
+            url=target_page,
             type="primary",
             use_container_width=True,
-            key=button_key,
-        ):
-            st.switch_page(target_page)
+        )
