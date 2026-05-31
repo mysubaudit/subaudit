@@ -1019,10 +1019,4 @@ def main() -> None:
 
 
 # ── Запуск страницы ───────────────────────────────────────────────────────────
-# Запускаем main() только когда Streamlit исполняет файл напрямую (run mode).
-# При импорте модуля (тесты) STREAMLIT_RUN_MODE не установлен — main() не вызывается.
-# guard от "or True" намеренно: Streamlit не поддерживает if __name__ == "__main__".
-import os as _os
-
-if _os.environ.get("STREAMLIT_RUN_MODE") in ("run", "script"):
-    main()
+main()
