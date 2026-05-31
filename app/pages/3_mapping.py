@@ -26,7 +26,7 @@ from app.core.mapper import (
     auto_map_columns,
 )
 from app.core.presets import get_preset_mapping
-from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity, handle_cta_redirect
 from app.utils.ui_components import render_cta_button
 
 # ---------------------------------------------------------------------------
@@ -149,6 +149,7 @@ def render_mapping_page() -> None:
     # Скрываем автонавигацию, показываем сайдбар (Section 4)
     inject_nav_css()
     render_sidebar()
+    handle_cta_redirect()
 
     # Явное действие пользователя — обновляем last_activity (Section 14)
     record_activity()

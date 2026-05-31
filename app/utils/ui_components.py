@@ -46,8 +46,11 @@ def render_cta_button(
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.page_link(
-            target_page,
-            label=button_label,
+        if st.button(
+            button_label,
+            type="primary",
             use_container_width=True,
-        )
+            key=button_key,
+        ):
+            # Сохраняем в session_state для отложенной навигации
+            st.session_state["_cta_target"] = target_page

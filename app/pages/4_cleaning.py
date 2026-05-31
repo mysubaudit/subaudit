@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.core.cleaner import clean_data
 from app.core.mapper import apply_mapping
 from app.observability.logger import log_error, log_warning, log_info
-from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity, handle_cta_redirect
 from app.utils.ui_components import render_cta_button
 
 # ---------------------------------------------------------------------------
@@ -183,6 +183,7 @@ def main() -> None:
     # Скрываем автонавигацию, показываем сайдбар (Section 4)
     inject_nav_css()
     render_sidebar()
+    handle_cta_redirect()
 
     # Явное действие пользователя — обновляем last_activity (Section 14)
     record_activity()
