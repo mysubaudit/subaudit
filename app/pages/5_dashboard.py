@@ -902,6 +902,10 @@ def main() -> None:
     inject_nav_css()
     render_sidebar()
     st.title("📊 SubAudit Dashboard")
+    
+    # Отладка — показываем состояние session_state
+    st.caption(f"df_clean: {'Есть' if 'df_clean' in st.session_state else 'Нет'}")
+    st.caption(f"column_mapping: {'Есть' if 'column_mapping' in st.session_state else 'Нет'}")
 
     # ── Проверка наличия данных в сессии ─────────────────────────────────────
     # Section 14: df_clean должен быть в session_state
