@@ -224,11 +224,12 @@ def main() -> None:
 
     st.title("📂 Upload Your Data")
 
-    col_nav, _ = st.columns([1, 4])
-    with col_nav:
+    col_left, col_right = st.columns([1, 3])
+    with col_left:
         if st.button("← Back to Landing", use_container_width=True):
             st.switch_page("pages/1_landing.py")
-        st.markdown("", unsafe_allow_html=True)  # visual gap after button
+    with col_right:
+        st.markdown("")  # placeholder for visual balance
 
     # -----------------------------------------------------------------------
     # Inline help tooltip — что ожидать от этой страницы
