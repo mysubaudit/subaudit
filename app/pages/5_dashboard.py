@@ -26,7 +26,7 @@ from app.reports.pdf_builder import generate_pdf
 from app.reports.excel_builder import generate_excel
 from app.payments.gumroad import get_subscription_status
 from app.observability.logger import log_error, log_warning, log_info
-from app.core.snapshot import save_snapshot, get_snapshot_history, calculate_mom_deltas  # v3.3
+from app.core.snapshot import get_snapshot_history, calculate_mom_deltas  # v3.3
 
 # Общие UI-утилиты: CSS скрытие авто-навигации + управляемый сайдбар
 import sys, os
@@ -886,37 +886,25 @@ def _render_data_quality_warnings(flags: dict) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main() -> None:
-    """
-    Точка входа 5_dashboard.py.
-    Порядок действий:
-      1. Проверка session_state (наличие df_clean, column_mapping) (Section 14)
-      2. Ре-верификация плана — Checkpoint 2 (Section 13)
-      3. Вычисление метрик через get_all_metrics() и get_data_quality_flags() (Section 9)
-      4. Отображение предупреждений о качестве данных (Section 5, 9)
-      5. Рендер блоков метрик 1–5 в зависимости от плана (Section 2, 9)
-      6. Прогноз (Section 10)
-      7. Симуляция — PRO only (Section 11)
-      8. Экспорт (Section 2, 13)
-    """
-    try:
-        # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
-        inject_nav_css()
-        render_sidebar()
-        st.title("📊 SubAudit Dashboard")
-        
-        # Отладка — показываем состояние session_state
-        st.caption(f"df_clean: {'Есть' if 'df_clean' in st.session_state else 'Нет'}")
-        st.caption(f"column_mapping: {'Есть' if 'column_mapping' in st.session_state else 'Нет'}")
-    except Exception as e:
-        st.error(f"Ошибка при загрузке: {e}")
-
+    """Точка входа 5_dashboard.py."""
+    st.write("DEBUG: main() started")  # Отладка
+    
+    # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
+    inject_nav_css()
+    st.write("DEBUG: after inject_nav_css")  # Отладка
+    
+    render_sidebar()
+    st.write("DEBUG: after render_sidebar")  # Отладка
+    
+    st.title("📊 SubAudit Dashboard")
+    
+    # Проверяем session_state
+    st.write(f"DEBUG: df_clean = {'df_clean' in st.session_state}")
+    st.write(f"DEBUG: column_mapping = {'column_mapping' in st.session_state}")
+    
     # ── Проверка наличия данных в сессии ─────────────────────────────────────
-    # Section 14: df_clean должен быть в session_state
     if "df_clean" not in st.session_state or st.session_state["df_clean"] is None:
-        st.warning(
-            "No data loaded. Please upload a CSV file first.",
-            icon="⚠️",
-        )
+        st.warning("No data loaded. Please upload a CSV file first.")
         st.page_link("pages/2_upload.py", label="Go to Upload", icon="📂")
         return
 
@@ -927,15 +915,15 @@ def main() -> None:
 
     df: pd.DataFrame = st.session_state["df_clean"]
     currency: str = st.session_state.get("currency", "USD")
-
-    # Обновляем last_activity — загрузка дашборда является явным действием (Section 14)
+    
     record_activity()
-
-    # ── Checkpoint 2 — ре-верификация плана при загрузке дашборда ────────────
-    # Section 13: «On Dashboard load (5_dashboard.py)»
-    plan: str = _recheck_plan()
-
-    # ── Предупреждение о подписке ─────────────────────────────────────────────
+    
+    # Ре-верификация плана
+    try:
+        plan: str = _recheck_plan()
+    except Exception:
+        plan = st.session_state.get("user_plan", "free")
+    
     _render_subscription_warning()
 
     # ── Вычисление метрик ─────────────────────────────────────────────────────
