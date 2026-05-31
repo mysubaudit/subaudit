@@ -887,20 +887,10 @@ def _render_data_quality_warnings(flags: dict) -> None:
 
 def main() -> None:
     """Точка входа 5_dashboard.py."""
-    st.write("DEBUG: main() started")  # Отладка
-    
     # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
     inject_nav_css()
-    st.write("DEBUG: after inject_nav_css")  # Отладка
-    
     render_sidebar()
-    st.write("DEBUG: after render_sidebar")  # Отладка
-    
     st.title("📊 SubAudit Dashboard")
-    
-    # Проверяем session_state
-    st.write(f"DEBUG: df_clean = {'df_clean' in st.session_state}")
-    st.write(f"DEBUG: column_mapping = {'column_mapping' in st.session_state}")
     
     # ── Проверка наличия данных в сессии ─────────────────────────────────────
     if "df_clean" not in st.session_state or st.session_state["df_clean"] is None:
