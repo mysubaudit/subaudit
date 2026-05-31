@@ -898,14 +898,17 @@ def main() -> None:
       7. Симуляция — PRO only (Section 11)
       8. Экспорт (Section 2, 13)
     """
-    # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
-    inject_nav_css()
-    render_sidebar()
-    st.title("📊 SubAudit Dashboard")
-    
-    # Отладка — показываем состояние session_state
-    st.caption(f"df_clean: {'Есть' if 'df_clean' in st.session_state else 'Нет'}")
-    st.caption(f"column_mapping: {'Есть' if 'column_mapping' in st.session_state else 'Нет'}")
+    try:
+        # Скрываем автонавигацию Streamlit, показываем управляемый сайдбар
+        inject_nav_css()
+        render_sidebar()
+        st.title("📊 SubAudit Dashboard")
+        
+        # Отладка — показываем состояние session_state
+        st.caption(f"df_clean: {'Есть' if 'df_clean' in st.session_state else 'Нет'}")
+        st.caption(f"column_mapping: {'Есть' if 'column_mapping' in st.session_state else 'Нет'}")
+    except Exception as e:
+        st.error(f"Ошибка при загрузке: {e}")
 
     # ── Проверка наличия данных в сессии ─────────────────────────────────────
     # Section 14: df_clean должен быть в session_state
