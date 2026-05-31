@@ -52,9 +52,4 @@ def render_cta_button(
             use_container_width=True,
             key=button_key,
         ):
-            st.session_state["_navigate_to"] = target_page
-
-    # Проверяем редирект после рендера всех виджетов
-    if "_navigate_to" in st.session_state:
-        target = st.session_state.pop("_navigate_to")
-        st.switch_page(target)
+            st.switch_page(target_page)
