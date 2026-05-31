@@ -21,7 +21,7 @@ import io
 # app/utils/page_setup.py — аналогичный вызов есть в каждой странице приложения
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity, handle_cta_redirect, render_login_gate
+from app.utils.page_setup import inject_nav_css, render_sidebar, record_activity, render_login_gate
 from app.utils.ui_components import render_cta_button
 # v3.2.3: детектор формата CSV (SPEC.md §8)
 from app.core.presets import detect_preset, build_preset_mapping
@@ -221,7 +221,6 @@ def main() -> None:
     # (без этого Streamlit показывает все страницы из /pages/ всем пользователям)
     inject_nav_css()
     render_sidebar()
-    handle_cta_redirect()
 
     st.title("📂 Upload Your Data")
 

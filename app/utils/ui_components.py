@@ -52,5 +52,4 @@ def render_cta_button(
             use_container_width=True,
             key=button_key,
         ):
-            # Сохраняем в session_state для отложенной навигации
-            st.session_state["_cta_target"] = target_page
+            st.switch_page(target_page)
