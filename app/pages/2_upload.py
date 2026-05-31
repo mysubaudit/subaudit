@@ -292,6 +292,7 @@ def main() -> None:
         label=file_uploader_label,
         type=["csv"],
         help="Only .csv format is supported. Maximum file size is 15 MB.",
+        key="main_csv_uploader",
     )
 
     if uploaded_file is None:
