@@ -946,30 +946,31 @@ def main() -> None:
     st.session_state["data_quality_flags"] = flags
 
     # v3.3.2: save snapshot after metrics computation (side effect, never blocks UI)
-    if (
-        st.session_state.get("user_id")
-        and not st.session_state.get("snapshot_saved", False)
-    ):
-        from datetime import datetime
-        from app.core.snapshot import save_snapshot
-
-        user_id = st.session_state["user_id"]
-        period = datetime.utcnow().strftime("%Y-%m")
-        source = st.session_state.get("source_file", "")
-
-        # Side effect — UI never depends on snapshot success
-        saved = save_snapshot(
-            user_id=user_id,
-            metrics=metrics,
-            period=period,
-            source=source,
-        )
-        if saved:
-            st.session_state["snapshot_saved"] = True
-            log_info(
-                "snapshot_saved_on_dashboard",
-                extra={"period": period, "source": source},
-            )
+    # Отключено — может вызывать ошибки при быстром переходе между страницами
+    # if (
+    #     st.session_state.get("user_id")
+    #     and not st.session_state.get("snapshot_saved", False)
+    # ):
+    #     from datetime import datetime
+    #     from app.core.snapshot import save_snapshot
+    #
+    #     user_id = st.session_state["user_id"]
+    #     period = datetime.utcnow().strftime("%Y-%m")
+    #     source = st.session_state.get("source_file", "")
+    #
+    #     # Side effect — UI never depends on snapshot success
+    #     saved = save_snapshot(
+    #         user_id=user_id,
+    #         metrics=metrics,
+    #         period=period,
+    #         source=source,
+    #     )
+    #     if saved:
+    #         st.session_state["snapshot_saved"] = True
+    #         log_info(
+    #             "snapshot_saved_on_dashboard",
+    #             extra={"period": period, "source": source},
+    #         )
 
     # ── Флаги качества данных ─────────────────────────────────────────────────
     _render_data_quality_warnings(flags)
