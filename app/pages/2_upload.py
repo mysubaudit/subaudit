@@ -503,27 +503,28 @@ def main() -> None:
     record_activity()
 
     # v3.3.2: auto-save snapshot после upload (side effect, никогда не блокирует UI)
-    if st.session_state.get("user_id") and not st.session_state.get("snapshot_saved", False):
-        from datetime import datetime
-        from app.core.snapshot import save_snapshot
-
-        user_id = st.session_state["user_id"]
-        period = datetime.utcnow().strftime("%Y-%m")
-        source = file_name
-
-        # Вычисляем метрики из df_processed (df_raw после дедупликации, до cleaning)
-        from app.core.metrics import get_all_metrics  # noqa: F401
-        metrics = get_all_metrics(df_processed)
-
-        # Side effect — UI не зависит от успеха snapshot
-        saved = save_snapshot(
-            user_id=user_id,
-            metrics=metrics,
-            period=period,
-            source=source,
-        )
-        if saved:
-            st.session_state["snapshot_saved"] = True
+    # Отключено — вызывает "SessionInfo not initialized" при быстром переходе между страницами
+    # if st.session_state.get("user_id") and not st.session_state.get("snapshot_saved", False):
+    #     from datetime import datetime
+    #     from app.core.snapshot import save_snapshot
+    # 
+    #     user_id = st.session_state["user_id"]
+    #     period = datetime.utcnow().strftime("%Y-%m")
+    #     source = file_name
+    # 
+    #     # Вычисляем метрики из df_processed (df_raw после дедупликации, до cleaning)
+    #     from app.core.metrics import get_all_metrics  # noqa: F401
+    #     metrics = get_all_metrics(df_processed)
+    # 
+    #     # Side effect — UI не зависит от успеха snapshot
+    #     saved = save_snapshot(
+    #         user_id=user_id,
+    #         metrics=metrics,
+    #         period=period,
+    #         source=source,
+    #     )
+    #     if saved:
+    #         st.session_state["snapshot_saved"] = True
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Rows loaded", f"{len(df_processed):,}")
