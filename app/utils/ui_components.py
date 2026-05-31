@@ -46,12 +46,15 @@ def render_cta_button(
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Преобразуем "pages/5_dashboard.py" в "/2_upload", "/3_mapping" и т.д.
-        # для HTML ссылки
-        page_num = target_page.replace("pages/", "").replace(".py", "")
-        href = f"/{page_num}"
-        
-        st.markdown(
-            f'<a href="{href}" target="_self" style="display:block; width:100%; padding:0.75rem; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; text-align:center; text-decoration:none; border-radius:8px; font-weight:600; font-size:1rem;">{button_label}</a>',
-            unsafe_allow_html=True,
-        )
+        if st.button(
+            button_label,
+            type="primary",
+            use_container_width=True,
+            key=button_key,
+        ):
+            st.session_state["_navigate_to"] = target_page
+
+    # Проверяем редирект после рендера всех виджетов
+    if "_navigate_to" in st.session_state:
+        target = st.session_state.pop("_navigate_to")
+        st.switch_page(target)
